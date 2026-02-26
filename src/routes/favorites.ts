@@ -7,8 +7,22 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/", (_req, res) => {
-  return res.status(501).json({ ok: false, error: "Not implemented" });
+router.get("/", async (req, res) => {
+  try {
+    const userId = res.locals.auth?.userId as string | undefined;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
+    }
+
+    // Include deal info.
+    const items = await FavoriteModel.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate("dealId");
+
+    return res.json({ ok: true, data: items });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
 });
 
 router.post("/:dealId", async (req, res) => {
