@@ -57,8 +57,42 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", (_req, res) => {
-  return res.status(501).json({ ok: false, error: "Not implemented" });
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body as { email?: string; password?: string };
+    if (!email || !password) {
+      return res.status(400).json({ ok: false, error: "email and password are required" });
+    }
+
+    const user = await UserModel.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ ok: false, error: "invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ ok: false, error: "invalid credentials" });
+    }
+
+    const token = jwt.sign({ sub: user._id.toString(), role: user.role }, env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    return res.json({
+      ok: true,
+      data: {
+        token,
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          role: user.role,
+          restaurantId: user.restaurantId,
+        },
+      },
+    });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
 });
 
 router.get("/me", (_req, res) => {
