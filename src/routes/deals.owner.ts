@@ -116,8 +116,32 @@ router.put("/deals/:id", async (req, res) => {
   }
 });
 
-router.delete("/deals/:id", (_req, res) => {
-  return res.status(501).json({ ok: false, error: "Not implemented" });
+router.delete("/deals/:id", async (req, res) => {
+  try {
+    const userId = res.locals.auth?.userId as string | undefined;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
+    }
+
+    const owner = await UserModel.findById(userId);
+    if (!owner || owner.role !== "owner" || !owner.restaurantId) {
+      return res.status(403).json({ ok: false, error: "owner profile incomplete" });
+    }
+
+    const deal = await DealModel.findById(req.params.id);
+    if (!deal || deal.restaurantId !== owner.restaurantId) {
+      return res.status(404).json({ ok: false, error: "deal not found" });
+    }
+
+    if (deal.status !== "DRAFT") {
+      return res.status(409).json({ ok: false, error: "illegal transition" });
+    }
+
+    await DealModel.deleteOne({ _id: deal._id });
+    return res.json({ ok: true, data: { deleted: true } });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
 });
 
 router.post("/deals/:id/submit", (_req, res) => {
