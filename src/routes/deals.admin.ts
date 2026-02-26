@@ -16,8 +16,25 @@ router.get("/deals/submitted", async (_req, res) => {
   }
 });
 
-router.post("/deals/:id/approve", (_req, res) => {
-  return res.status(501).json({ ok: false, error: "Not implemented" });
+router.post("/deals/:id/approve", async (req, res) => {
+  try {
+    const deal = await DealModel.findById(req.params.id);
+    if (!deal) {
+      return res.status(404).json({ ok: false, error: "deal not found" });
+    }
+
+    if (deal.status !== "SUBMITTED") {
+      return res.status(409).json({ ok: false, error: "illegal transition" });
+    }
+
+    deal.status = "PUBLISHED";
+    deal.rejectionReason = undefined;
+    await deal.save();
+
+    return res.json({ ok: true, data: deal });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
 });
 
 router.post("/deals/:id/reject", (_req, res) => {
