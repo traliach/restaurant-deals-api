@@ -74,8 +74,36 @@ router.post("/deals/:id/submit", (_req, res) => {
   return res.status(501).json({ ok: false, error: "Not implemented" });
 });
 
-router.get("/deals", (_req, res) => {
-  return res.status(501).json({ ok: false, error: "Not implemented" });
+router.get("/deals", async (req, res) => {
+  try {
+    const userId = res.locals.auth?.userId as string | undefined;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
+    }
+
+    const owner = await UserModel.findById(userId);
+    if (!owner || owner.role !== "owner" || !owner.restaurantId) {
+      return res.status(403).json({ ok: false, error: "owner profile incomplete" });
+    }
+
+    const status = req.query.status;
+    const filter: {
+      restaurantId: string;
+      status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "REJECTED";
+    } = { restaurantId: owner.restaurantId };
+
+    if (
+      typeof status === "string" &&
+      ["DRAFT", "SUBMITTED", "PUBLISHED", "REJECTED"].includes(status)
+    ) {
+      filter.status = status as "DRAFT" | "SUBMITTED" | "PUBLISHED" | "REJECTED";
+    }
+
+    const items = await DealModel.find(filter).sort({ createdAt: -1 });
+    return res.json({ ok: true, data: items });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
 });
 
 export default router;
