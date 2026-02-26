@@ -95,8 +95,38 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.get("/me", (_req, res) => {
-  return res.status(501).json({ ok: false, error: "Not implemented" });
+router.get("/me", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) {
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
+    }
+
+    const payload = jwt.verify(token, env.JWT_SECRET) as { sub?: string };
+    if (!payload.sub) {
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
+    }
+
+    const user = await UserModel.findById(payload.sub);
+    if (!user) {
+      return res.status(404).json({ ok: false, error: "user not found" });
+    }
+
+    return res.json({
+      ok: true,
+      data: {
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          role: user.role,
+          restaurantId: user.restaurantId,
+        },
+      },
+    });
+  } catch {
+    return res.status(401).json({ ok: false, error: "unauthenticated" });
+  }
 });
 
 export default router;
