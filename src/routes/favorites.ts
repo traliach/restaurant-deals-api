@@ -43,8 +43,18 @@ router.post("/:dealId", async (req, res) => {
   }
 });
 
-router.delete("/:dealId", (_req, res) => {
-  return res.status(501).json({ ok: false, error: "Not implemented" });
+router.delete("/:dealId", async (req, res) => {
+  try {
+    const userId = res.locals.auth?.userId as string | undefined;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
+    }
+
+    await FavoriteModel.deleteOne({ userId, dealId: req.params.dealId });
+    return res.json({ ok: true, data: { deleted: true } });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
 });
 
 export default router;
