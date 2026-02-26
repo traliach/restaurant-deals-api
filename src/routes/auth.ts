@@ -2,6 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
+import { requireAuth } from "../middleware/requireAuth";
 import { UserModel } from "../models/User";
 
 const router = Router();
@@ -95,20 +96,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.get("/me", async (req, res) => {
+router.get("/me", requireAuth, async (_req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    if (!token) {
-      return res.status(401).json({ ok: false, error: "unauthenticated" });
-    }
-
-    const payload = jwt.verify(token, env.JWT_SECRET) as { sub?: string };
-    if (!payload.sub) {
-      return res.status(401).json({ ok: false, error: "unauthenticated" });
-    }
-
-    const user = await UserModel.findById(payload.sub);
+    const userId = res.locals.auth?.userId as string | undefined;
+    const user = userId ? await UserModel.findById(userId) : null;
     if (!user) {
       return res.status(404).json({ ok: false, error: "user not found" });
     }
@@ -125,7 +116,7 @@ router.get("/me", async (req, res) => {
       },
     });
   } catch {
-    return res.status(401).json({ ok: false, error: "unauthenticated" });
+    return res.status(500).json({ ok: false, error: "server error" });
   }
 });
 
