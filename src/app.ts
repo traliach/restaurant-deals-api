@@ -17,12 +17,12 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, data: { status: "up" } });
 });
 
-// All route groups.
+// Route groups split by access level.
 app.use("/api/auth", authRoutes);
-app.use("/api/deals", publicDealsRoutes);
-app.use("/api/owner", ownerDealsRoutes);
-app.use("/api/admin", adminDealsRoutes);
-app.use("/api/favorites", favoritesRoutes);
+app.use("/api/deals", publicDealsRoutes);   // No auth needed
+app.use("/api/owner", ownerDealsRoutes);    // Owner role required
+app.use("/api/admin", adminDealsRoutes);    // Admin role required
+app.use("/api/favorites", favoritesRoutes); // Any logged-in user
 app.use(errorHandler);
 
 export default app;

@@ -1,5 +1,6 @@
 import { InferSchemaType, Schema, model } from "mongoose";
 
+// Core resource — moderated marketplace deal.
 const dealSchema = new Schema(
   {
     restaurantId: { type: String, required: true, trim: true },
@@ -22,6 +23,7 @@ const dealSchema = new Schema(
     tags: [{ type: String, trim: true }],
     startAt: { type: Date },
     endAt: { type: Date },
+    // Workflow: DRAFT -> SUBMITTED -> PUBLISHED | REJECTED
     status: {
       type: String,
       enum: ["DRAFT", "SUBMITTED", "PUBLISHED", "REJECTED"],
@@ -34,8 +36,9 @@ const dealSchema = new Schema(
   { timestamps: true }
 );
 
-// Required query indexes.
+// Speeds up owner lookups.
 dealSchema.index({ restaurantId: 1 });
+// Speeds up public feed + admin queue.
 dealSchema.index({ status: 1, createdAt: -1 });
 
 // Value required for percent/amount.
