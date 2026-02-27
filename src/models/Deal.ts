@@ -34,9 +34,11 @@ const dealSchema = new Schema(
   { timestamps: true }
 );
 
+// Required query indexes.
 dealSchema.index({ restaurantId: 1 });
 dealSchema.index({ status: 1, createdAt: -1 });
 
+// Value required for percent/amount.
 dealSchema.path("value").validate(function (this: Deal, value: number | undefined) {
   if (this.discountType === "percent" || this.discountType === "amount") {
     return typeof value === "number";

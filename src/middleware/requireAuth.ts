@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // Extract JWT from header.
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
@@ -16,6 +17,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ ok: false, error: "unauthenticated" });
     }
 
+    // Store userId and role.
     res.locals.auth = { userId: payload.sub, role: payload.role };
     return next();
   } catch {

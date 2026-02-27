@@ -8,6 +8,7 @@ const router = Router();
 
 router.use(requireAuth, requireRole(["owner"]));
 
+// Only owner's restaurant.
 router.post("/deals", async (req, res) => {
   try {
     const userId = res.locals.auth?.userId as string | undefined;
@@ -79,6 +80,7 @@ router.put("/deals/:id", async (req, res) => {
       return res.status(404).json({ ok: false, error: "deal not found" });
     }
 
+    // DRAFT/REJECTED editable only.
     if (deal.status !== "DRAFT" && deal.status !== "REJECTED") {
       return res.status(409).json({ ok: false, error: "illegal transition" });
     }
@@ -133,6 +135,7 @@ router.delete("/deals/:id", async (req, res) => {
       return res.status(404).json({ ok: false, error: "deal not found" });
     }
 
+    // DRAFT deletable only.
     if (deal.status !== "DRAFT") {
       return res.status(409).json({ ok: false, error: "illegal transition" });
     }
@@ -161,6 +164,7 @@ router.post("/deals/:id/submit", async (req, res) => {
       return res.status(404).json({ ok: false, error: "deal not found" });
     }
 
+    // DRAFT/REJECTED submittable.
     if (deal.status !== "DRAFT" && deal.status !== "REJECTED") {
       return res.status(409).json({ ok: false, error: "illegal transition" });
     }

@@ -2,6 +2,7 @@ import app from "./app";
 import { assertEnv, env } from "./config/env";
 import { connectDb } from "./db/connect";
 
+// Validate env, then start.
 async function startServer() {
   try {
     assertEnv();

@@ -3,12 +3,15 @@ import { Deal, DealModel } from "../models/Deal";
 
 const router = Router();
 
+// Published deals only.
 router.get("/", async (req, res) => {
   try {
+    // Paginate results.
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
+    // Optional search/filter/sort.
     const filter: {
       status: Deal["status"];
       dealType?: Deal["dealType"];

@@ -29,6 +29,7 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ ok: false, error: "email already registered" });
     }
 
+    // Hash password before save.
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await UserModel.create({
       email: email.toLowerCase(),
@@ -37,6 +38,7 @@ router.post("/register", async (req, res) => {
       restaurantId,
     });
 
+    // Sign JWT on success.
     const token = jwt.sign({ sub: user._id.toString(), role: user.role }, env.JWT_SECRET, {
       expiresIn: "7d",
     });

@@ -7,6 +7,7 @@ const router = Router();
 
 router.use(requireAuth, requireRole(["admin"]));
 
+// SUBMITTED queue only.
 router.get("/deals/submitted", async (_req, res) => {
   try {
     const items = await DealModel.find({ status: "SUBMITTED" }).sort({ createdAt: -1 });
@@ -16,6 +17,7 @@ router.get("/deals/submitted", async (_req, res) => {
   }
 });
 
+// SUBMITTED → PUBLISHED.
 router.post("/deals/:id/approve", async (req, res) => {
   try {
     const deal = await DealModel.findById(req.params.id);
@@ -37,6 +39,7 @@ router.post("/deals/:id/approve", async (req, res) => {
   }
 });
 
+// SUBMITTED → REJECTED + reason.
 router.post("/deals/:id/reject", async (req, res) => {
   try {
     const { reason } = req.body as { reason?: string };

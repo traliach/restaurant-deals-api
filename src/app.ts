@@ -9,6 +9,7 @@ import favoritesRoutes from "./routes/favorites";
 
 const app = express();
 
+// Global middleware setup.
 app.use(cors());
 app.use(express.json());
 
@@ -16,6 +17,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, data: { status: "up" } });
 });
 
+// All route groups.
 app.use("/api/auth", authRoutes);
 app.use("/api/deals", publicDealsRoutes);
 app.use("/api/owner", ownerDealsRoutes);

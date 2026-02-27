@@ -10,6 +10,7 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
+// Owner needs restaurantId.
 userSchema.path("restaurantId").validate(function (this: User, value: string | undefined) {
   if (this.role === "owner") return Boolean(value && value.trim());
   return true;

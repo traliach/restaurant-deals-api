@@ -8,6 +8,7 @@ const favoriteSchema = new Schema(
   { timestamps: true }
 );
 
+// Prevent duplicate favorites.
 favoriteSchema.index({ userId: 1, dealId: 1 }, { unique: true });
 
 export type Favorite = InferSchemaType<typeof favoriteSchema>;
