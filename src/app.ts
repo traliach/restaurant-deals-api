@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { errorHandler } from "./middleware/errorHandler";
 import authRoutes from "./routes/auth";
 import adminDealsRoutes from "./routes/deals.admin";
 import ownerDealsRoutes from "./routes/deals.owner";
@@ -20,5 +21,6 @@ app.use("/api/deals", publicDealsRoutes);
 app.use("/api/owner", ownerDealsRoutes);
 app.use("/api/admin", adminDealsRoutes);
 app.use("/api/favorites", favoritesRoutes);
+app.use(errorHandler);
 
 export default app;
