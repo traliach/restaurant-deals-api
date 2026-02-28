@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
+import { NotificationModel } from "../models/Notification";
 import { OrderModel } from "../models/Order";
 import { UserModel } from "../models/User";
 
@@ -61,6 +62,14 @@ router.put("/orders/:id/status", async (req, res) => {
 
     order.status = status as OrderStatus;
     await order.save();
+
+    // Notify the customer their order status changed.
+    await NotificationModel.create({
+      userId: order.userId,
+      type: "order_status",
+      message: `Your order status has been updated to: ${status}.`,
+      orderId: order._id,
+    });
 
     return res.json({ ok: true, data: order });
   } catch {
