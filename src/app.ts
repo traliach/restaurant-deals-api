@@ -11,6 +11,7 @@ import paymentRoutes from "./routes/payments";
 import ownerOrderRoutes from "./routes/orders.owner";
 import restaurantRoutes from "./routes/restaurants";
 import botRoutes from "./routes/bot";
+import externalRoutes from "./routes/external";
 import notificationRoutes from "./routes/notifications";
 import webhookRoutes from "./routes/webhooks";
 
@@ -39,6 +40,7 @@ app.use("/api/owner", ownerOrderRoutes);          // Owner orders
 app.use("/api/payments", paymentRoutes);          // Stripe payment intent
 app.use("/api/notifications", notificationRoutes); // Auth required
 app.use("/api/bot", botRoutes);                    // Auth required
+app.use("/api/external", externalRoutes);          // Foursquare proxy
 app.use(errorHandler);
 
 export default app;
