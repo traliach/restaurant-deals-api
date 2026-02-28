@@ -6,6 +6,7 @@ import adminDealsRoutes from "./routes/deals.admin";
 import ownerDealsRoutes from "./routes/deals.owner";
 import publicDealsRoutes from "./routes/deals.public";
 import favoritesRoutes from "./routes/favorites";
+import restaurantRoutes from "./routes/restaurants";
 
 const app = express();
 
@@ -19,10 +20,11 @@ app.get("/api/health", (_req, res) => {
 
 // Route groups split by access level.
 app.use("/api/auth", authRoutes);
-app.use("/api/deals", publicDealsRoutes);   // No auth needed
-app.use("/api/owner", ownerDealsRoutes);    // Owner role required
-app.use("/api/admin", adminDealsRoutes);    // Admin role required
-app.use("/api/favorites", favoritesRoutes); // Any logged-in user
+app.use("/api/deals", publicDealsRoutes);         // No auth needed
+app.use("/api/owner", ownerDealsRoutes);          // Owner role required
+app.use("/api/admin", adminDealsRoutes);          // Admin role required
+app.use("/api/favorites", favoritesRoutes);       // Any logged-in user
+app.use("/api/restaurants", restaurantRoutes);    // Public + owner
 app.use(errorHandler);
 
 export default app;
