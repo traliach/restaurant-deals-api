@@ -48,7 +48,7 @@ router.post("/:dealId", async (req, res) => {
         "code" in error &&
         (error as { code?: number }).code === 11000
       ) {
-        return res.json({ ok: true, data: { alreadyFavorited: true } });
+        return res.status(409).json({ ok: false, error: "already favorited" });
       }
       return res.status(500).json({ ok: false, error: "server error" });
     }
