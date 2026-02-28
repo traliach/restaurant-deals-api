@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
+import { BotInteractionModel } from "../models/BotInteraction";
 import { DealModel } from "../models/Deal";
 import { NotificationModel } from "../models/Notification";
 
@@ -78,6 +79,19 @@ router.post("/deals/:id/reject", async (req, res) => {
     });
 
     return res.json({ ok: true, data: deal });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+});
+
+// Admin: audit all bot interactions.
+router.get("/bot-interactions", async (_req, res) => {
+  try {
+    const logs = await BotInteractionModel.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate("userId", "email role");
+    return res.json({ ok: true, data: logs });
   } catch {
     return res.status(500).json({ ok: false, error: "server error" });
   }
