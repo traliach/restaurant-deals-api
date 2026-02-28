@@ -6,10 +6,8 @@ import { BotInteractionModel } from "../models/BotInteraction";
 
 const router = Router();
 
-// Only suggests safe actions — client executes them.
-const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-
 router.post("/chat", requireAuth, async (req, res) => {
+  // Only suggests safe actions — client executes them.
   try {
     const userId = res.locals.auth?.userId as string | undefined;
     if (!userId) {
@@ -21,6 +19,11 @@ router.post("/chat", requireAuth, async (req, res) => {
       return res.status(400).json({ ok: false, error: "message required" });
     }
 
+    if (!env.OPENAI_API_KEY) {
+      return res.status(503).json({ ok: false, error: "AI not configured" });
+    }
+
+    const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [

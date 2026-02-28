@@ -5,12 +5,14 @@ import { requireAuth } from "../middleware/requireAuth";
 
 const router = Router();
 
-// Stripe handles PCI compliance.
-const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-
 // Customer: create a PaymentIntent before checkout.
 router.post("/create-intent", requireAuth, async (req, res) => {
   try {
+    if (!env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ ok: false, error: "Stripe not configured" });
+    }
+    // Stripe handles PCI compliance — init per-request so missing key won't crash server.
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
     const { amount } = req.body as { amount?: number };
 
     if (!amount || amount <= 0) {

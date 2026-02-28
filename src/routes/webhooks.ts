@@ -5,15 +5,15 @@ import { OrderModel } from "../models/Order";
 
 const router = Router();
 
-const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-
 // Raw body required — Stripe verifies signature against it.
 router.post("/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
 
-  if (!sig || !env.STRIPE_WEBHOOK_SECRET) {
-    return res.status(400).json({ ok: false, error: "missing signature" });
+  if (!sig || !env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY) {
+    return res.status(400).json({ ok: false, error: "missing signature or Stripe config" });
   }
+
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
   let event: Stripe.Event;
   try {
