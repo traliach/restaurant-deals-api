@@ -10,8 +10,12 @@ import orderRoutes from "./routes/orders";
 import paymentRoutes from "./routes/payments";
 import ownerOrderRoutes from "./routes/orders.owner";
 import restaurantRoutes from "./routes/restaurants";
+import webhookRoutes from "./routes/webhooks";
 
 const app = express();
+
+// Webhook must use raw body — mount before express.json().
+app.use("/api/webhooks", webhookRoutes);
 
 // Global middleware setup.
 app.use(cors());
