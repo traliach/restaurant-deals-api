@@ -110,4 +110,4 @@ src/
 
 ## Related
 
-- Frontend repo: [restaurant-deals-web](../restaurant-deals-web)
+- Frontend repo: [restaurant-deals-web](https://github.com/traliach/restaurant-deals-web)
