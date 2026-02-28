@@ -9,6 +9,12 @@ REST API for a moderated restaurant deals marketplace. Restaurant owners create 
 - Public deals feed with search, filters, sorting, and pagination
 - Favorites system with duplicate prevention (compound unique index)
 - Mongoose schemas with validation and query-optimized indexes
+- Restaurant profiles (owner-managed, Foursquare-enrichable)
+- Orders with immutable OrderItem snapshots (price locked at purchase)
+- Stripe payment intents + webhook for order confirmation
+- Notifications (deal approved/rejected, order status changes)
+- AI bot chat (OpenAI) with admin audit log
+- Foursquare Places API proxy for restaurant discovery
 
 ## Tech Stack
 
@@ -36,11 +42,15 @@ npm run dev
 
 ## Environment Variables
 
-| Variable     | Description                     | Example                          |
-|--------------|---------------------------------|----------------------------------|
-| `API_PORT`   | Port the server listens on      | `3000`                           |
-| `MONGO_URI`  | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster/db` |
-| `JWT_SECRET` | Secret key for signing tokens   | Any long random string           |
+| Variable                | Description                              | Required |
+|-------------------------|------------------------------------------|----------|
+| `API_PORT`              | Port the server listens on               | No (default 3000) |
+| `MONGO_URI`             | MongoDB Atlas connection string          | Yes |
+| `JWT_SECRET`            | Secret key for signing JWTs             | Yes |
+| `STRIPE_SECRET_KEY`     | Stripe secret key (`sk_test_...`)        | For payments |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret            | For webhooks |
+| `OPENAI_API_KEY`        | OpenAI API key for bot chat              | For AI chat |
+| `FOURSQUARE_API_KEY`    | Foursquare service API key               | For explore feature |
 
 Copy `.env.example` to `.env` and fill in your values. Never commit `.env`.
 
@@ -83,6 +93,46 @@ Query params for `GET /api/deals`: `q`, `dealType`, `minPrice`, `maxPrice`, `min
 | GET    | `/api/favorites`          | Auth   | List favorites   |
 | POST   | `/api/favorites/:dealId`  | Auth   | Add favorite     |
 | DELETE | `/api/favorites/:dealId`  | Auth   | Remove favorite  |
+
+### Restaurants
+| Method | Route                        | Access | Description                  |
+|--------|------------------------------|--------|------------------------------|
+| GET    | `/api/restaurants/:id`       | Public | Get restaurant by id         |
+| GET    | `/api/restaurants/owner/me`  | Owner  | Get own restaurant profile   |
+| POST   | `/api/restaurants/owner`     | Owner  | Create restaurant profile    |
+| PUT    | `/api/restaurants/owner`     | Owner  | Update restaurant profile    |
+
+### Orders
+| Method | Route                            | Access   | Description               |
+|--------|----------------------------------|----------|---------------------------|
+| POST   | `/api/orders`                    | Auth     | Create order (checkout)   |
+| GET    | `/api/orders`                    | Auth     | List own orders           |
+| GET    | `/api/owner/orders`              | Owner    | List restaurant orders    |
+| PUT    | `/api/owner/orders/:id/status`   | Owner    | Update order status       |
+
+### Payments
+| Method | Route                             | Access | Description                    |
+|--------|-----------------------------------|--------|--------------------------------|
+| POST   | `/api/payments/create-intent`     | Auth   | Create Stripe PaymentIntent    |
+| POST   | `/api/webhooks/stripe`            | Public | Stripe webhook (raw body)      |
+
+### Notifications
+| Method | Route                              | Access | Description          |
+|--------|------------------------------------|--------|----------------------|
+| GET    | `/api/notifications`               | Auth   | List notifications   |
+| PATCH  | `/api/notifications/:id/read`      | Auth   | Mark one read        |
+| PATCH  | `/api/notifications/read-all`      | Auth   | Mark all read        |
+
+### Bot Chat
+| Method | Route                              | Access | Description                   |
+|--------|------------------------------------|--------|-------------------------------|
+| POST   | `/api/bot/chat`                    | Auth   | Send message, get AI response |
+| GET    | `/api/admin/bot-interactions`      | Admin  | Audit all bot interactions    |
+
+### External (Foursquare Proxy)
+| Method | Route                              | Access | Description                    |
+|--------|------------------------------------|--------|--------------------------------|
+| GET    | `/api/external/places?query=&near=`| Auth   | Search restaurants via Foursquare |
 
 ## Project Structure
 
