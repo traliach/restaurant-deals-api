@@ -6,6 +6,9 @@ import adminDealsRoutes from "./routes/deals.admin";
 import ownerDealsRoutes from "./routes/deals.owner";
 import publicDealsRoutes from "./routes/deals.public";
 import favoritesRoutes from "./routes/favorites";
+import orderRoutes from "./routes/orders";
+import paymentRoutes from "./routes/payments";
+import ownerOrderRoutes from "./routes/orders.owner";
 import restaurantRoutes from "./routes/restaurants";
 
 const app = express();
@@ -25,6 +28,9 @@ app.use("/api/owner", ownerDealsRoutes);          // Owner role required
 app.use("/api/admin", adminDealsRoutes);          // Admin role required
 app.use("/api/favorites", favoritesRoutes);       // Any logged-in user
 app.use("/api/restaurants", restaurantRoutes);    // Public + owner
+app.use("/api/orders", orderRoutes);              // Auth required
+app.use("/api/owner", ownerOrderRoutes);          // Owner orders
+app.use("/api/payments", paymentRoutes);          // Stripe payment intent
 app.use(errorHandler);
 
 export default app;
