@@ -10,6 +10,7 @@ import orderRoutes from "./routes/orders";
 import paymentRoutes from "./routes/payments";
 import ownerOrderRoutes from "./routes/orders.owner";
 import restaurantRoutes from "./routes/restaurants";
+import notificationRoutes from "./routes/notifications";
 import webhookRoutes from "./routes/webhooks";
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/restaurants", restaurantRoutes);    // Public + owner
 app.use("/api/orders", orderRoutes);              // Auth required
 app.use("/api/owner", ownerOrderRoutes);          // Owner orders
 app.use("/api/payments", paymentRoutes);          // Stripe payment intent
+app.use("/api/notifications", notificationRoutes); // Auth required
 app.use(errorHandler);
 
 export default app;
