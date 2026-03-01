@@ -5,6 +5,8 @@ const dealSchema = new Schema(
   {
     restaurantId: { type: String, required: true, trim: true },
     restaurantName: { type: String, required: true, trim: true },
+    restaurantAddress: { type: String, trim: true },
+    restaurantCity: { type: String, trim: true },
     title: { type: String, required: true, trim: true, maxlength: 80 },
     description: { type: String, required: true, trim: true, maxlength: 400 },
     dealType: {
@@ -40,6 +42,8 @@ const dealSchema = new Schema(
 dealSchema.index({ restaurantId: 1 });
 // Speeds up public feed + admin queue.
 dealSchema.index({ status: 1, createdAt: -1 });
+// Speeds up city filtering on public feed.
+dealSchema.index({ restaurantCity: 1, status: 1 });
 
 // Value required for percent/amount.
 dealSchema.path("value").validate(function (this: Deal, value: number | undefined) {
