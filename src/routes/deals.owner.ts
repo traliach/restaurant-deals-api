@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
 import { DealModel } from "../models/Deal";
+import { RestaurantModel } from "../models/Restaurant";
 import { UserModel } from "../models/User";
 
 const router = Router();
@@ -40,9 +41,14 @@ router.post("/deals", async (req, res) => {
       return res.status(400).json({ ok: false, error: "missing required fields" });
     }
 
+    // Pull location from the owner's Restaurant profile if it exists.
+    const restaurant = await RestaurantModel.findOne({ restaurantId: owner.restaurantId });
+
     const created = await DealModel.create({
       restaurantId: owner.restaurantId,
       restaurantName,
+      restaurantAddress: restaurant?.address,
+      restaurantCity: restaurant?.city,
       title,
       description,
       dealType,
