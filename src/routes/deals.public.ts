@@ -15,11 +15,16 @@ router.get("/", async (req, res) => {
     const filter: {
       status: Deal["status"];
       dealType?: Deal["dealType"];
+      restaurantCity?: string;
       $or?: { title?: RegExp; description?: RegExp; restaurantName?: RegExp }[];
       price?: { $gte?: number; $lte?: number };
       value?: { $gte?: number; $lte?: number };
     } = { status: "PUBLISHED" };
-    const { dealType, q, minPrice, maxPrice, minValue, maxValue, sort } = req.query;
+    const { dealType, city, q, minPrice, maxPrice, minValue, maxValue, sort } = req.query;
+
+    if (typeof city === "string" && city.trim()) {
+      filter.restaurantCity = city.trim();
+    }
 
     if (
       typeof dealType === "string" &&
