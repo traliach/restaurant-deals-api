@@ -47,8 +47,11 @@ router.get("/", async (req, res) => {
       if (maxValue) filter.value.$lte = Number(maxValue);
     }
 
-    const sortQuery: [string, 1 | -1][] =
-      sort === "value" ? [["value", -1], ["createdAt", -1]] : [["createdAt", -1]];
+    // Object format is safer than array-of-tuples for compound sorts in Mongoose.
+    const sortQuery =
+      String(sort) === "value"
+        ? { value: -1 as const, createdAt: -1 as const }
+        : { createdAt: -1 as const };
 
     const [items, total] = await Promise.all([
       DealModel.find(filter).sort(sortQuery).skip(skip).limit(limit),
