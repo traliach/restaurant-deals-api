@@ -1,60 +1,79 @@
 /**
- * Foursquare enrichment script.
- * Updates seeded restaurants with real data: address, city, lat/lng, rating, website, photo.
- * Also updates associated deals with new restaurantAddress and restaurantCity.
+ * Foursquare enrichment script — Option C architecture.
+ *
+ * 1. Tags all existing seeded restaurants/deals with source="seed" (migration).
+ * 2. For each city, searches Foursquare for real restaurants.
+ * 3. Creates new Restaurant documents (source="foursquare") and 5 published Deals each.
+ * Idempotent — skips cities that already have foursquare restaurants.
  *
  * Run: npx ts-node src/scripts/enrich-foursquare.ts
- * Safe to re-run — only updates restaurants that have a foursquareId NOT already set.
  */
 
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { DealModel } from "../models/Deal";
 import { RestaurantModel } from "../models/Restaurant";
+import { UserModel } from "../models/User";
 
 dotenv.config();
 
 const MONGO_URI = process.env.MONGO_URI || "";
 const FOURSQUARE_KEY = process.env.FOURSQUARE_API_KEY || "";
 
+const CITIES = [
+  { city: "Newark", near: "Newark, NJ" },
+  { city: "Jersey City", near: "Jersey City, NJ" },
+  { city: "New York", near: "New York, NY" },
+  { city: "Brooklyn", near: "Brooklyn, NY" },
+  { city: "Hoboken", near: "Hoboken, NJ" },
+  { city: "Montclair", near: "Montclair, NJ" },
+];
+
+const DEAL_TEMPLATES = [
+  { title: "Chef's Daily Special", description: "Fresh seasonal ingredients prepared by our head chef. Available daily until sold out.", dealType: "Lunch" as const, discountType: "percent" as const, value: 20, price: 16.99 },
+  { title: "Happy Hour Bites", description: "Half-price appetizers every weekday 4–7pm. Perfect for after-work gatherings.", dealType: "Carryout" as const, discountType: "amount" as const, value: 8, price: 22.00 },
+  { title: "Family Feast Pack", description: "Feeds a family of four. Two entrees, sides, and a shared dessert. Order ahead.", dealType: "Carryout" as const, discountType: "percent" as const, value: 15, price: 59.99 },
+  { title: "Buy One Get One", description: "Order any entrée and receive a second of equal or lesser value free.", dealType: "Delivery" as const, discountType: "bogo" as const, value: 0, price: 19.50 },
+  { title: "Weekend Brunch Deal", description: "Bottomless coffee and juice included with any brunch plate Saturday and Sunday.", dealType: "Other" as const, discountType: "amount" as const, value: 10, price: 28.00 },
+];
+
 type FoursquarePlace = {
   fsq_id: string;
   name: string;
-  location?: {
-    formatted_address?: string;
-    locality?: string;
-    address?: string;
-  };
+  location?: { formatted_address?: string; locality?: string };
   geocodes?: { main?: { latitude: number; longitude: number } };
   photos?: { prefix: string; suffix: string }[];
   rating?: number;
   website?: string;
+  tel?: string;
 };
 
-async function searchFoursquare(query: string, near: string): Promise<FoursquarePlace | null> {
+async function searchFoursquare(near: string, limit = 5): Promise<FoursquarePlace[]> {
   const params = new URLSearchParams({
-    query,
+    query: "restaurant",
     near,
-    limit: "1",
-    fields: "fsq_id,name,location,geocodes,photos,rating,website",
+    limit: String(limit),
+    fields: "fsq_id,name,location,geocodes,photos,rating,website,tel",
   });
 
   const res = await fetch(
     `https://api.foursquare.com/v3/places/search?${params.toString()}`,
-    {
-      headers: {
-        Authorization: FOURSQUARE_KEY,
-        Accept: "application/json",
-      },
-    }
+    { headers: { Authorization: FOURSQUARE_KEY, Accept: "application/json" } }
   );
 
   if (!res.ok) {
-    return null;
+    console.log(`  Foursquare error for ${near}: ${res.status}`);
+    return [];
   }
 
   const data = await res.json() as { results?: FoursquarePlace[] };
-  return data.results?.[0] ?? null;
+  return data.results ?? [];
+}
+
+function daysFromNow(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d;
 }
 
 async function enrich() {
@@ -66,62 +85,107 @@ async function enrich() {
   await mongoose.connect(MONGO_URI);
   console.log("DB connected\n");
 
-  // Only enrich restaurants not yet enriched.
-  const restaurants = await RestaurantModel.find({ foursquareId: { $exists: false } });
-  console.log(`Found ${restaurants.length} restaurants to enrich\n`);
+  // ── Step 1: Tag all existing seed data ──────────────────────────────────────
+  const seedRestaurantUpdate = await RestaurantModel.updateMany(
+    { source: { $exists: false } },
+    { source: "seed" }
+  );
+  const seedDealUpdate = await DealModel.updateMany(
+    { restaurantSource: { $exists: false } },
+    { restaurantSource: "seed" }
+  );
+  console.log(`Migration: tagged ${seedRestaurantUpdate.modifiedCount} restaurants and ${seedDealUpdate.modifiedCount} deals as source=seed\n`);
 
-  let enriched = 0;
-  let skipped = 0;
+  // Find a foursquare owner account to attribute deals to (or use admin).
+  const adminUser = await UserModel.findOne({ role: "admin" });
+  if (!adminUser) {
+    console.error("No admin user found — run seed.ts first");
+    await mongoose.disconnect();
+    process.exit(1);
+  }
 
-  for (const restaurant of restaurants) {
-    // Rate limit — Foursquare free tier: 1 req/sec.
-    await new Promise((r) => setTimeout(r, 1100));
+  let totalRestaurants = 0;
+  let totalDeals = 0;
 
-    const place = await searchFoursquare(restaurant.name, restaurant.city ?? "New York");
-
-    if (!place) {
-      console.log(`  ✗ Not found: ${restaurant.name} (${restaurant.city})`);
-      skipped++;
+  // ── Step 2: Import real restaurants per city ─────────────────────────────────
+  for (const { city, near } of CITIES) {
+    const existing = await RestaurantModel.countDocuments({ city, source: "foursquare" });
+    if (existing > 0) {
+      console.log(`Skipping ${city} — already enriched (${existing} restaurants)`);
       continue;
     }
 
-    const photo = place.photos?.[0];
-    const photoUrl = photo ? `${photo.prefix}800x450${photo.suffix}` : undefined;
-    const address = place.location?.formatted_address ?? place.location?.address ?? restaurant.address;
-    const city = place.location?.locality ?? restaurant.city;
+    console.log(`Fetching restaurants near ${near}...`);
+    // Rate limit — 1 req/sec for free tier.
+    await new Promise((r) => setTimeout(r, 1100));
 
-    // Update the Restaurant document.
-    await RestaurantModel.updateOne(
-      { _id: restaurant._id },
-      {
+    const places = await searchFoursquare(near, 5);
+    if (places.length === 0) {
+      console.log(`  No results for ${near}`);
+      continue;
+    }
+
+    for (const place of places) {
+      // Skip if this Foursquare place is already imported.
+      const exists = await RestaurantModel.findOne({ foursquareId: place.fsq_id });
+      if (exists) {
+        console.log(`  Skipping duplicate: ${place.name}`);
+        continue;
+      }
+
+      const photo = place.photos?.[0];
+      const photoUrl = photo ? `${photo.prefix}800x450${photo.suffix}` : undefined;
+      const address = place.location?.formatted_address ?? "";
+      const restaurantId = `fsq-${place.fsq_id}`;
+
+      const restaurant = await RestaurantModel.create({
+        restaurantId,
+        name: place.name,
+        ownerId: adminUser._id,
+        source: "foursquare",
         foursquareId: place.fsq_id,
+        description: `${place.name} is a real restaurant imported from Foursquare Places.`,
         address,
         city,
         latitude: place.geocodes?.main?.latitude,
         longitude: place.geocodes?.main?.longitude,
-        rating: place.rating,
+        phone: place.tel,
         website: place.website,
-        ...(photoUrl ? { imageUrl: photoUrl } : {}),
-      }
-    );
+        rating: place.rating,
+        imageUrl: photoUrl,
+      });
+      totalRestaurants++;
 
-    // Propagate address/city to all deals for this restaurant.
-    await DealModel.updateMany(
-      { restaurantId: restaurant.restaurantId },
-      {
-        restaurantAddress: address,
-        restaurantCity: city,
-        ...(photoUrl ? { imageUrl: photoUrl } : {}),
+      // Create 5 deals for this real restaurant.
+      for (const tmpl of DEAL_TEMPLATES) {
+        await DealModel.create({
+          restaurantId,
+          restaurantName: place.name,
+          restaurantAddress: address,
+          restaurantCity: city,
+          restaurantSource: "foursquare",
+          title: tmpl.title,
+          description: tmpl.description,
+          dealType: tmpl.dealType,
+          discountType: tmpl.discountType,
+          value: tmpl.value,
+          price: tmpl.price,
+          imageUrl: photoUrl,
+          status: "PUBLISHED",
+          createdByUserId: adminUser._id,
+          startAt: new Date(),
+          endAt: daysFromNow(30),
+        });
+        totalDeals++;
       }
-    );
 
-    console.log(`  ✓ ${restaurant.name} → ${place.name} (${city}) rating:${place.rating ?? "n/a"}`);
-    enriched++;
+      console.log(`  ✓ ${place.name} (${city}) rating:${place.rating ?? "n/a"} photos:${place.photos?.length ?? 0}`);
+    }
   }
 
   console.log(`\nEnrichment complete:`);
-  console.log(`  Enriched: ${enriched}`);
-  console.log(`  Not found: ${skipped}`);
+  console.log(`  Restaurants imported: ${totalRestaurants}`);
+  console.log(`  Deals created:        ${totalDeals}`);
 
   await mongoose.disconnect();
 }
