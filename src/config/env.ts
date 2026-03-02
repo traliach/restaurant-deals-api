@@ -9,7 +9,6 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET || "",
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
   YELP_API_KEY: process.env.YELP_API_KEY || "",
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
 };

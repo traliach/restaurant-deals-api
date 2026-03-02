@@ -13,8 +13,8 @@ REST API for a moderated restaurant deals marketplace. Restaurant owners create 
 - Orders with immutable OrderItem snapshots (price locked at purchase)
 - Stripe payment intents + webhook for order confirmation
 - Notifications (deal approved/rejected, order status changes)
-- AI bot chat (OpenAI) with admin audit log
-- Foursquare Places API proxy for restaurant discovery
+- AI bot chat (Gemini) — translates natural language into deal filters with admin audit log
+- Yelp Fusion API proxy for real restaurant discovery and enrichment
 
 ## Tech Stack
 
@@ -49,8 +49,8 @@ npm run dev
 | `JWT_SECRET`            | Secret key for signing JWTs             | Yes |
 | `STRIPE_SECRET_KEY`     | Stripe secret key (`sk_test_...`)        | For payments |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret            | For webhooks |
-| `OPENAI_API_KEY`        | OpenAI API key for bot chat              | For AI chat |
-| `FOURSQUARE_API_KEY`    | Foursquare service API key               | For explore feature |
+| `YELP_API_KEY`          | Yelp Fusion API key                      | For restaurant discovery |
+| `GEMINI_API_KEY`        | Google Gemini API key (free tier)        | For AI bot chat |
 
 Copy `.env.example` to `.env` and fill in your values. Never commit `.env`.
 
@@ -129,10 +129,10 @@ Query params for `GET /api/deals`: `q`, `dealType`, `minPrice`, `maxPrice`, `min
 | POST   | `/api/bot/chat`                    | Auth   | Send message, get AI response |
 | GET    | `/api/admin/bot-interactions`      | Admin  | Audit all bot interactions    |
 
-### External (Foursquare Proxy)
+### External (Yelp Proxy)
 | Method | Route                              | Access | Description                    |
 |--------|------------------------------------|--------|--------------------------------|
-| GET    | `/api/external/places?query=&near=`| Auth   | Search restaurants via Foursquare |
+| GET    | `/api/external/places?query=&near=`| Auth   | Search restaurants via Yelp    |
 
 ## Project Structure
 
