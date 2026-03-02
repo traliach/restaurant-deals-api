@@ -20,13 +20,14 @@ dotenv.config();
 const MONGO_URI = process.env.MONGO_URI || "";
 const FOURSQUARE_KEY = process.env.FOURSQUARE_API_KEY || "";
 
+// Using ll (lat/lon) instead of near — avoids geocoding, more reliable on free tier.
 const CITIES = [
-  { city: "Newark", near: "Newark, NJ" },
-  { city: "Jersey City", near: "Jersey City, NJ" },
-  { city: "New York", near: "New York, NY" },
-  { city: "Brooklyn", near: "Brooklyn, NY" },
-  { city: "Hoboken", near: "Hoboken, NJ" },
-  { city: "Montclair", near: "Montclair, NJ" },
+  { city: "Newark", ll: "40.7357,-74.1724" },
+  { city: "Jersey City", ll: "40.7178,-74.0431" },
+  { city: "New York", ll: "40.7580,-73.9855" },
+  { city: "Brooklyn", ll: "40.6782,-73.9442" },
+  { city: "Hoboken", ll: "40.7440,-74.0324" },
+  { city: "Montclair", ll: "40.8259,-74.2090" },
 ];
 
 const DEAL_TEMPLATES = [
@@ -49,15 +50,32 @@ type FoursquarePlace = {
   tel?: string;
 };
 
-async function searchFoursquare(near: string, limit = 5): Promise<FoursquarePlace[]> {
+const RATE_LIMIT_WAIT_MS = 60_000;
+const RATE_LIMIT_MAX_RETRIES = 5;
+const SUCCESS_DELAY_MS = 4000;
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 1; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    console.log(`  429 rate limit — waiting ${RATE_LIMIT_WAIT_MS / 1000}s (attempt ${attempt}/${RATE_LIMIT_MAX_RETRIES})...`);
+    await sleep(RATE_LIMIT_WAIT_MS);
+  }
+  throw new Error("429 max retries exceeded");
+}
+
+async function searchFoursquare(ll: string, limit = 5): Promise<FoursquarePlace[]> {
   const params = new URLSearchParams({
     query: "restaurant",
-    near,
+    ll,
     limit: String(limit),
-    fields: "fsq_id,name,location,geocodes,photos,rating,website,tel",
+    // Request enriched fields — required or they won't be returned.
+    fields: "fsq_place_id,name,location,latitude,longitude,photos,rating,website,tel",
   });
 
-  const res = await fetch(
+  const res = await fetchWithBackoff(
     `https://places-api.foursquare.com/places/search?${params.toString()}`,
     {
       headers: {
@@ -69,7 +87,7 @@ async function searchFoursquare(near: string, limit = 5): Promise<FoursquarePlac
   );
 
   if (!res.ok) {
-    console.log(`  Foursquare error for ${near}: ${res.status}`);
+    console.log(`  Foursquare error ${res.status} for ll=${ll}`);
     return [];
   }
 
@@ -115,20 +133,19 @@ async function enrich() {
   let totalDeals = 0;
 
   // ── Step 2: Import real restaurants per city ─────────────────────────────────
-  for (const { city, near } of CITIES) {
+  for (const { city, ll } of CITIES) {
     const existing = await RestaurantModel.countDocuments({ city, source: "foursquare" });
     if (existing > 0) {
       console.log(`Skipping ${city} — already enriched (${existing} restaurants)`);
       continue;
     }
 
-    console.log(`Fetching restaurants near ${near}...`);
-    // Rate limit — 1 req/sec for free tier.
-    await new Promise((r) => setTimeout(r, 1100));
+    console.log(`Fetching restaurants near ${city} (${ll})...`);
+    await sleep(SUCCESS_DELAY_MS);
 
-    const places = await searchFoursquare(near, 5);
+    const places = await searchFoursquare(ll, 5);
     if (places.length === 0) {
-      console.log(`  No results for ${near}`);
+      console.log(`  No results for ${city}`);
       continue;
     }
 
