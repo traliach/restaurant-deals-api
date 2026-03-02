@@ -26,7 +26,7 @@ router.get("/", async (req, res) => {
     if (typeof city === "string" && city.trim()) {
       filter.restaurantCity = city.trim();
     }
-    if (typeof source === "string" && ["seed", "foursquare"].includes(source)) {
+    if (typeof source === "string" && ["seed", "yelp"].includes(source)) {
       filter.restaurantSource = source;
     }
 

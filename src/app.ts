@@ -40,7 +40,7 @@ app.use("/api/owner", ownerOrderRoutes);          // Owner orders
 app.use("/api/payments", paymentRoutes);          // Stripe payment intent
 app.use("/api/notifications", notificationRoutes); // Auth required
 app.use("/api/bot", botRoutes);                    // Auth required
-app.use("/api/external", externalRoutes);          // Foursquare proxy
+app.use("/api/external", externalRoutes);          // Proxy Yelp search for owners
 app.use(errorHandler);
 
 export default app;

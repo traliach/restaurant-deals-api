@@ -17,7 +17,6 @@ const restaurantSchema = new Schema(
     website: { type: String, trim: true },
     rating: { type: Number, min: 0, max: 10 },
     imageUrl: { type: String, trim: true },
-    foursquareId: { type: String, trim: true },
   },
   { timestamps: true }
 );
@@ -26,8 +25,6 @@ const restaurantSchema = new Schema(
 restaurantSchema.index({ ownerId: 1 });
 // Fast city filtering.
 restaurantSchema.index({ city: 1 });
-// Unique Foursquare place — sparse so null values don't conflict.
-restaurantSchema.index({ foursquareId: 1 }, { unique: true, sparse: true });
 // Fast source filtering.
 restaurantSchema.index({ source: 1 });
 

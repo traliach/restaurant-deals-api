@@ -141,7 +141,6 @@ async function enrich() {
         name: biz.name,
         ownerId: adminUser._id,
         source: "yelp",
-        foursquareId: undefined,
         description: `${biz.name} is a real restaurant imported from Yelp. Rating: ${biz.rating ?? "N/A"}/5.`,
         address,
         city,

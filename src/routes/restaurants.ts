@@ -66,14 +66,13 @@ router.post(
         return res.status(409).json({ ok: false, error: "restaurant already exists" });
       }
 
-      const { name, description, address, phone, imageUrl, foursquareId } =
+      const { name, description, address, phone, imageUrl } =
         req.body as {
           name?: string;
           description?: string;
           address?: string;
           phone?: string;
           imageUrl?: string;
-          foursquareId?: string;
         };
 
       if (!name) {
@@ -88,7 +87,6 @@ router.post(
         address,
         phone,
         imageUrl,
-        foursquareId,
       });
 
       return res.status(201).json({ ok: true, data: restaurant });
@@ -118,14 +116,13 @@ router.put(
         return res.status(404).json({ ok: false, error: "restaurant not found" });
       }
 
-      const { name, description, address, phone, imageUrl, foursquareId } =
+      const { name, description, address, phone, imageUrl } =
         req.body as {
           name?: string;
           description?: string;
           address?: string;
           phone?: string;
           imageUrl?: string;
-          foursquareId?: string;
         };
 
       if (name !== undefined) restaurant.name = name;
@@ -133,7 +130,6 @@ router.put(
       if (address !== undefined) restaurant.address = address;
       if (phone !== undefined) restaurant.phone = phone;
       if (imageUrl !== undefined) restaurant.imageUrl = imageUrl;
-      if (foursquareId !== undefined) restaurant.foursquareId = foursquareId;
 
       await restaurant.save();
       return res.json({ ok: true, data: restaurant });

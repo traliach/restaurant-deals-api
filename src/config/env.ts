@@ -10,7 +10,6 @@ export const env = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
   YELP_API_KEY: process.env.YELP_API_KEY || "",
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
   GROQ_API_KEY: process.env.GROQ_API_KEY || "",
 };
 
