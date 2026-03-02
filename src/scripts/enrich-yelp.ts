@@ -127,14 +127,14 @@ async function enrich() {
     }
 
     for (const biz of businesses) {
-      const existing = await RestaurantModel.findOne({ "yelpId": biz.id });
+      const restaurantId = `yelp-${biz.id}`;
+      const existing = await RestaurantModel.findOne({ restaurantId });
       if (existing) {
         console.log(`  Skipping duplicate: ${biz.name}`);
         continue;
       }
 
       const address = biz.location?.display_address?.join(", ") ?? "";
-      const restaurantId = `yelp-${biz.id}`;
 
       await RestaurantModel.create({
         restaurantId,
