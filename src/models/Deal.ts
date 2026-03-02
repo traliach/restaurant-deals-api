@@ -8,7 +8,7 @@ const dealSchema = new Schema(
     restaurantAddress: { type: String, trim: true },
     restaurantCity: { type: String, trim: true },
     // Mirrors the source of the restaurant for fast filtering.
-    restaurantSource: { type: String, enum: ["seed", "foursquare"], default: "seed" },
+    restaurantSource: { type: String, enum: ["seed", "yelp"], default: "seed" },
     title: { type: String, required: true, trim: true, maxlength: 80 },
     description: { type: String, required: true, trim: true, maxlength: 400 },
     dealType: {

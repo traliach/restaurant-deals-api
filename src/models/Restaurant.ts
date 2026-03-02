@@ -7,7 +7,7 @@ const restaurantSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 },
     ownerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     // Where this restaurant came from.
-    source: { type: String, enum: ["seed", "foursquare"], default: "seed", required: true },
+    source: { type: String, enum: ["seed", "yelp"], default: "seed", required: true },
     description: { type: String, trim: true, maxlength: 500 },
     address: { type: String, trim: true },
     city: { type: String, trim: true },

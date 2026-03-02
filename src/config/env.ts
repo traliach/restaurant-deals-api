@@ -11,6 +11,7 @@ export const env = {
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
   FOURSQUARE_API_KEY: process.env.FOURSQUARE_API_KEY || "",
+  YELP_API_KEY: process.env.YELP_API_KEY || "",
 };
 
 // Crash fast if missing.
