@@ -26,7 +26,7 @@ router.post("/chat", requireAuth, async (req, res) => {
     const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -116,7 +116,8 @@ User message: "${message.trim()}"`;
     });
 
     return res.json({ ok: true, data: parsed });
-  } catch {
+  } catch (err) {
+    console.error("[bot] Gemini error:", err instanceof Error ? err.message : err);
     return res.status(500).json({ ok: false, error: "bot error" });
   }
 });
