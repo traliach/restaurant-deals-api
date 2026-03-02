@@ -6,6 +6,8 @@ const restaurantSchema = new Schema(
     restaurantId: { type: String, required: true, unique: true, trim: true },
     name: { type: String, required: true, trim: true, maxlength: 120 },
     ownerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // Where this restaurant came from.
+    source: { type: String, enum: ["seed", "foursquare"], default: "seed", required: true },
     description: { type: String, trim: true, maxlength: 500 },
     address: { type: String, trim: true },
     city: { type: String, trim: true },
@@ -15,7 +17,7 @@ const restaurantSchema = new Schema(
     website: { type: String, trim: true },
     rating: { type: Number, min: 0, max: 10 },
     imageUrl: { type: String, trim: true },
-    foursquareId: { type: String, trim: true },
+    foursquareId: { type: String, trim: true, sparse: true },
   },
   { timestamps: true }
 );
@@ -24,6 +26,10 @@ const restaurantSchema = new Schema(
 restaurantSchema.index({ ownerId: 1 });
 // Fast city filtering.
 restaurantSchema.index({ city: 1 });
+// Unique Foursquare place — sparse so null values don't conflict.
+restaurantSchema.index({ foursquareId: 1 }, { unique: true, sparse: true });
+// Fast source filtering.
+restaurantSchema.index({ source: 1 });
 
 export type Restaurant = InferSchemaType<typeof restaurantSchema>;
 export const RestaurantModel = model<Restaurant>("Restaurant", restaurantSchema);

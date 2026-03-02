@@ -7,6 +7,8 @@ const dealSchema = new Schema(
     restaurantName: { type: String, required: true, trim: true },
     restaurantAddress: { type: String, trim: true },
     restaurantCity: { type: String, trim: true },
+    // Mirrors the source of the restaurant for fast filtering.
+    restaurantSource: { type: String, enum: ["seed", "foursquare"], default: "seed" },
     title: { type: String, required: true, trim: true, maxlength: 80 },
     description: { type: String, required: true, trim: true, maxlength: 400 },
     dealType: {
@@ -44,6 +46,8 @@ dealSchema.index({ restaurantId: 1 });
 dealSchema.index({ status: 1, createdAt: -1 });
 // Speeds up city filtering on public feed.
 dealSchema.index({ restaurantCity: 1, status: 1 });
+// Speeds up source filtering on public feed.
+dealSchema.index({ restaurantSource: 1, status: 1 });
 
 // Value required for percent/amount.
 dealSchema.path("value").validate(function (this: Deal, value: number | undefined) {
