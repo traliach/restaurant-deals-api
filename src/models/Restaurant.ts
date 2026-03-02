@@ -17,7 +17,7 @@ const restaurantSchema = new Schema(
     website: { type: String, trim: true },
     rating: { type: Number, min: 0, max: 10 },
     imageUrl: { type: String, trim: true },
-    foursquareId: { type: String, trim: true, sparse: true },
+    foursquareId: { type: String, trim: true },
   },
   { timestamps: true }
 );

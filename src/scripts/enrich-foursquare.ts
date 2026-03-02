@@ -50,9 +50,13 @@ type FoursquarePlace = {
   tel?: string;
 };
 
-const RATE_LIMIT_WAIT_MS = 60_000;
-const RATE_LIMIT_MAX_RETRIES = 5;
+const RATE_LIMIT_WAIT_MS = 300_000; // 5 min — free tier resets slowly
+const RATE_LIMIT_MAX_RETRIES = 3;
 const SUCCESS_DELAY_MS = 4000;
+
+// Optional: run only one city per session to conserve quota.
+// Usage: ONLY_CITY="Newark" npx ts-node src/scripts/enrich-foursquare.ts
+const ONLY_CITY = process.env.ONLY_CITY?.trim();
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -134,6 +138,10 @@ async function enrich() {
 
   // ── Step 2: Import real restaurants per city ─────────────────────────────────
   for (const { city, ll } of CITIES) {
+    if (ONLY_CITY && city !== ONLY_CITY) {
+      console.log(`Skipping ${city} (ONLY_CITY=${ONLY_CITY})`);
+      continue;
+    }
     const existing = await RestaurantModel.countDocuments({ city, source: "foursquare" });
     if (existing > 0) {
       console.log(`Skipping ${city} — already enriched (${existing} restaurants)`);
