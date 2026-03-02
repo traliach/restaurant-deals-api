@@ -48,10 +48,10 @@ router.get("/", async (req, res) => {
     }
 
     // Object format is safer than array-of-tuples for compound sorts in Mongoose.
-    const sortQuery =
+    const sortQuery: Record<string, 1 | -1> =
       String(sort) === "value"
-        ? { value: -1 as const, createdAt: -1 as const }
-        : { createdAt: -1 as const };
+        ? { value: -1, createdAt: -1 }
+        : { createdAt: -1 };
 
     const [items, total] = await Promise.all([
       DealModel.find(filter).sort(sortQuery).skip(skip).limit(limit),
