@@ -38,10 +38,11 @@ const DEAL_TEMPLATES = [
 ];
 
 type FoursquarePlace = {
-  fsq_id: string;
+  fsq_place_id: string;
   name: string;
   location?: { formatted_address?: string; locality?: string };
-  geocodes?: { main?: { latitude: number; longitude: number } };
+  latitude?: number;
+  longitude?: number;
   photos?: { prefix: string; suffix: string }[];
   rating?: number;
   website?: string;
@@ -57,8 +58,14 @@ async function searchFoursquare(near: string, limit = 5): Promise<FoursquarePlac
   });
 
   const res = await fetch(
-    `https://api.foursquare.com/v3/places/search?${params.toString()}`,
-    { headers: { Authorization: FOURSQUARE_KEY, Accept: "application/json" } }
+    `https://places-api.foursquare.com/places/search?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${FOURSQUARE_KEY}`,
+        Accept: "application/json",
+        "X-Places-Api-Version": "2025-06-17",
+      },
+    }
   );
 
   if (!res.ok) {
@@ -127,7 +134,7 @@ async function enrich() {
 
     for (const place of places) {
       // Skip if this Foursquare place is already imported.
-      const exists = await RestaurantModel.findOne({ foursquareId: place.fsq_id });
+      const exists = await RestaurantModel.findOne({ foursquareId: place.fsq_place_id });
       if (exists) {
         console.log(`  Skipping duplicate: ${place.name}`);
         continue;
@@ -136,19 +143,19 @@ async function enrich() {
       const photo = place.photos?.[0];
       const photoUrl = photo ? `${photo.prefix}800x450${photo.suffix}` : undefined;
       const address = place.location?.formatted_address ?? "";
-      const restaurantId = `fsq-${place.fsq_id}`;
+      const restaurantId = `fsq-${place.fsq_place_id}`;
 
       const restaurant = await RestaurantModel.create({
         restaurantId,
         name: place.name,
         ownerId: adminUser._id,
         source: "foursquare",
-        foursquareId: place.fsq_id,
+        foursquareId: place.fsq_place_id,
         description: `${place.name} is a real restaurant imported from Foursquare Places.`,
         address,
         city,
-        latitude: place.geocodes?.main?.latitude,
-        longitude: place.geocodes?.main?.longitude,
+        latitude: place.latitude,
+        longitude: place.longitude,
         phone: place.tel,
         website: place.website,
         rating: place.rating,
@@ -179,7 +186,7 @@ async function enrich() {
         totalDeals++;
       }
 
-      console.log(`  ✓ ${place.name} (${city}) rating:${place.rating ?? "n/a"} photos:${place.photos?.length ?? 0}`);
+      console.log(`  ✓ ${place.name} (${city}) id:${place.fsq_place_id} rating:${place.rating ?? "n/a"}`);
     }
   }
 
