@@ -104,8 +104,15 @@ async function patch() {
     dealHit += dRes.modifiedCount;
   }
 
+  // Reset endAt = now + 24h on every PUBLISHED deal so they are live for one day
+  const expireRes = await DealModel.updateMany(
+    { status: "PUBLISHED" },
+    { $set: { endAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } }
+  );
+
   console.log(`Restaurants updated : ${restaurantHit}`);
   console.log(`Deals updated       : ${dealHit}`);
+  console.log(`Deals endAt reset   : ${expireRes.modifiedCount}`);
 
   await mongoose.disconnect();
   console.log("\nDone.");
