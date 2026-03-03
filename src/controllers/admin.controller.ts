@@ -19,7 +19,7 @@ export async function getStats(_req: Request, res: Response) {
         { $sort: { totalDeals: -1 } },
         { $limit: 5 },
         { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
-        { $unwind: { path: "$user", preserveNullAndEmpty: true } },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
         { $project: { _id: 0, email: "$user.email", restaurantId: "$user.restaurantId", totalDeals: 1, published: 1 } },
       ]),
     ]);
