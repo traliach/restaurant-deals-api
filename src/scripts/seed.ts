@@ -56,6 +56,41 @@ const ADDRESSES = [
   ["57 Walnut St", "717 Bloomfield Ave", "555 Bloomfield Ave", "331 Bloomfield Ave", "189 Walnut St"],
 ];
 
+// ─── Cuisine + dietary mappings ──────────────────────────────────────────────
+
+type CuisineType = "French" | "Italian" | "Spanish" | "American" | "Asian" | "Mexican" | "Mediterranean" | "Other";
+type DietaryTag  = "Vegan" | "Vegetarian" | "Gluten-Free" | "Halal" | "Keto" | "Dairy-Free";
+
+const RESTAURANT_CUISINE: Record<string, CuisineType> = {
+  "Ironbound Steakhouse": "American",  "Ferry St Tapas":       "Spanish",
+  "Seabra's Marisqueira": "Spanish",   "Porto's Kitchen":      "Spanish",
+  "Brasilia Grill":       "Other",
+  "Skinner's Loft":       "American",  "Light Horse Tavern":   "American",
+  "Taqueria Downtown":    "Mexican",   "Satis Bistro":         "French",
+  "Porta Pizza":          "Italian",
+  "The NoMad Bar":        "American",  "Balthazar Brasserie":  "French",
+  "Superiority Burger":   "American",  "Ivan Ramen":           "Asian",
+  "Xi'an Famous Foods":   "Asian",
+  "Lucali Pizza":         "Italian",   "Di Fara Pizza":        "Italian",
+  "Roberta's":            "Italian",   "Olmsted":              "American",
+  "The River Café":       "American",
+  "Antique Bar & Bakery": "American",  "Amanda's Restaurant":  "American",
+  "Bwe Kafe":             "Other",     "Leo's Grandevous":     "American",
+  "Bin 14":               "American",
+  "Pig & Prince":         "American",  "Raymond's":            "American",
+  "Halcyon":              "American",  "Fascino":              "Italian",
+  "Fresco Il Ristorante": "Italian",
+};
+
+const RESTAURANT_DIETARY: Record<string, DietaryTag[]> = {
+  "Superiority Burger":   ["Vegan", "Vegetarian"],
+  "Ivan Ramen":           ["Vegetarian"],
+  "Xi'an Famous Foods":   ["Halal"],
+  "Olmsted":              ["Vegan", "Gluten-Free"],
+  "Bwe Kafe":             ["Vegan", "Vegetarian"],
+  "Seabra's Marisqueira": ["Gluten-Free"],
+};
+
 // ─── Deal templates ──────────────────────────────────────────────────────────
 
 const DEAL_TEMPLATES = [
@@ -171,6 +206,9 @@ async function seed() {
       const name = names[ri];
       const address = `${addresses[ri]}, ${city}, ${state}`;
 
+      const cuisineType = RESTAURANT_CUISINE[name] ?? "Other";
+      const dietaryTags = RESTAURANT_DIETARY[name] ?? [];
+
       let restaurant = await RestaurantModel.findOne({ restaurantId: restId });
       if (!restaurant) {
         restaurant = await RestaurantModel.create({
@@ -183,6 +221,7 @@ async function seed() {
           city,
           imageUrl: picsum(name),
           phone: `(${201 + ci}) 555-${String(1000 + ri * 111).padStart(4, "0")}`,
+          cuisineType,
         });
         totalRestaurants++;
       }
@@ -209,6 +248,9 @@ async function seed() {
           value: tmpl.value,
           price: tmpl.price,
           imageUrl: picsum(`${name}-${tmpl.title}`),
+          cuisineType,
+          dietaryTags,
+          yelpRating: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
           status: "SUBMITTED",
           createdByUserId: owner._id,
           startAt: new Date(),
