@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { DealModel } from "../models/Deal";
 import { OrderModel } from "../models/Order";
 import { NotificationModel } from "../models/Notification";
+import { RestaurantModel } from "../models/Restaurant";
 import { UserModel } from "../models/User";
 
 export async function createOrder(req: Request, res: Response) {
@@ -77,9 +78,12 @@ export async function listOwnerOrders(req: Request, res: Response) {
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
 
     const owner = await UserModel.findById(userId);
-    if (!owner?.restaurantId) return res.status(403).json({ ok: false, error: "owner profile incomplete" });
+    if (!owner) return res.status(403).json({ ok: false, error: "owner profile incomplete" });
 
-    const orders = await OrderModel.find({ "items.restaurantId": owner.restaurantId }).sort({ createdAt: -1 });
+    const restaurants = await RestaurantModel.find({ ownerId: owner._id }, "restaurantId");
+    const restaurantIds = restaurants.map((r) => r.restaurantId);
+
+    const orders = await OrderModel.find({ "items.restaurantId": { $in: restaurantIds } }).sort({ createdAt: -1 });
     return res.json({ ok: true, data: orders });
   } catch {
     return res.status(500).json({ ok: false, error: "server error" });
@@ -92,14 +96,17 @@ export async function updateOwnerOrderStatus(req: Request, res: Response) {
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
 
     const owner = await UserModel.findById(userId);
-    if (!owner?.restaurantId) return res.status(403).json({ ok: false, error: "owner profile incomplete" });
+    if (!owner) return res.status(403).json({ ok: false, error: "owner profile incomplete" });
 
     const { status } = req.body as { status?: string };
     const ORDER_STATUSES = ["Placed", "Preparing", "Ready", "Completed"];
     if (!status || !ORDER_STATUSES.includes(status))
       return res.status(400).json({ ok: false, error: "invalid status" });
 
-    const order = await OrderModel.findOne({ _id: req.params.id, "items.restaurantId": owner.restaurantId });
+    const restaurants = await RestaurantModel.find({ ownerId: owner._id }, "restaurantId");
+    const restaurantIds = restaurants.map((r) => r.restaurantId);
+
+    const order = await OrderModel.findOne({ _id: req.params.id, "items.restaurantId": { $in: restaurantIds } });
     if (!order) return res.status(404).json({ ok: false, error: "order not found" });
 
     const currentIdx = ORDER_STATUSES.indexOf(order.status);
