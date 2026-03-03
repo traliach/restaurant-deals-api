@@ -41,6 +41,8 @@ const DEAL_TEMPLATES = [
   { title: "Weekend Brunch Deal", description: "Bottomless coffee and juice included with any brunch plate Saturday and Sunday.", dealType: "Other" as const, discountType: "amount" as const, value: 10, price: 28.00 },
 ];
 
+type CuisineType = "French" | "Italian" | "Spanish" | "American" | "Asian" | "Mexican" | "Mediterranean" | "Other";
+
 type YelpBusiness = {
   id: string;
   name: string;
@@ -50,8 +52,27 @@ type YelpBusiness = {
   phone?: string;
   location?: { display_address?: string[]; city?: string };
   coordinates?: { latitude?: number; longitude?: number };
-  categories?: { title: string }[];
+  categories?: { alias: string; title: string }[];
 };
+
+const YELP_ALIAS_MAP: Record<string, CuisineType> = {
+  french: "French",
+  italian: "Italian", pizza: "Italian", sicilian: "Italian",
+  spanish: "Spanish", tapas: "Spanish", portuguese: "Spanish",
+  newamerican: "American", tradamerican: "American", american: "American", burgers: "American",
+  asianfusion: "Asian", japanese: "Asian", chinese: "Asian", korean: "Asian",
+  vietnamese: "Asian", thai: "Asian", ramen: "Asian", sushi: "Asian",
+  mexican: "Mexican", tacos: "Mexican",
+  mediterranean: "Mediterranean", greek: "Mediterranean", mideastern: "Mediterranean",
+};
+
+function mapYelpCuisine(categories?: { alias: string }[]): CuisineType {
+  for (const cat of categories ?? []) {
+    const mapped = YELP_ALIAS_MAP[cat.alias.toLowerCase()];
+    if (mapped) return mapped;
+  }
+  return "Other";
+}
 
 async function searchYelp(location: string, limit = 5): Promise<YelpBusiness[]> {
   const params = new URLSearchParams({
@@ -135,6 +156,7 @@ async function enrich() {
       }
 
       const address = biz.location?.display_address?.join(", ") ?? "";
+      const cuisineType = mapYelpCuisine(biz.categories);
 
       await RestaurantModel.create({
         restaurantId,
@@ -150,6 +172,7 @@ async function enrich() {
         website: biz.url,
         rating: biz.rating ? biz.rating * 2 : undefined, // convert 0-5 → 0-10 to match schema
         imageUrl: biz.image_url,
+        cuisineType,
       });
       totalRestaurants++;
 
@@ -167,6 +190,8 @@ async function enrich() {
           value: tmpl.value,
           price: tmpl.price,
           imageUrl: biz.image_url,
+          cuisineType,
+          yelpRating: biz.rating,
           status: "PUBLISHED",
           createdByUserId: adminUser._id,
           startAt: new Date(),
