@@ -1,0 +1,114 @@
+import { Request, Response } from "express";
+import { BotInteractionModel } from "../models/BotInteraction";
+import { DealModel } from "../models/Deal";
+import { NotificationModel } from "../models/Notification";
+import { RestaurantModel } from "../models/Restaurant";
+import { UserModel } from "../models/User";
+
+export async function getStats(_req: Request, res: Response) {
+  try {
+    const [totalUsers, owners, customers, admins, totalRestaurants, dealsByStatus] = await Promise.all([
+      UserModel.countDocuments(),
+      UserModel.countDocuments({ role: "owner" }),
+      UserModel.countDocuments({ role: "customer" }),
+      UserModel.countDocuments({ role: "admin" }),
+      RestaurantModel.countDocuments(),
+      DealModel.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+    ]);
+
+    const dealCounts = { DRAFT: 0, SUBMITTED: 0, PUBLISHED: 0, REJECTED: 0 } as Record<string, number>;
+    for (const d of dealsByStatus) dealCounts[d._id as string] = d.count;
+
+    return res.json({ ok: true, data: { totalUsers, owners, customers, admins, totalRestaurants, dealCounts } });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
+
+export async function getAllUsers(_req: Request, res: Response) {
+  try {
+    const users = await UserModel.find({}, "-passwordHash").sort({ createdAt: -1 });
+    return res.json({ ok: true, data: users });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
+
+export async function getAllDeals(_req: Request, res: Response) {
+  try {
+    const items = await DealModel.find().sort({ createdAt: -1 });
+    return res.json({ ok: true, data: items });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
+
+export async function getSubmittedDeals(_req: Request, res: Response) {
+  try {
+    const items = await DealModel.find({ status: "SUBMITTED" }).sort({ createdAt: -1 });
+    return res.json({ ok: true, data: items });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
+
+export async function approveDeal(req: Request, res: Response) {
+  try {
+    const deal = await DealModel.findById(req.params.id);
+    if (!deal) return res.status(404).json({ ok: false, error: "deal not found" });
+    if (deal.status !== "SUBMITTED") return res.status(409).json({ ok: false, error: "illegal transition" });
+
+    deal.status = "PUBLISHED";
+    deal.rejectionReason = undefined;
+    await deal.save();
+
+    await NotificationModel.create({
+      userId: deal.createdByUserId,
+      type: "deal_approved",
+      message: `Your deal "${deal.title}" was approved and is now live.`,
+      dealId: deal._id,
+    });
+
+    return res.json({ ok: true, data: deal });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
+
+export async function rejectDeal(req: Request, res: Response) {
+  try {
+    const { reason } = req.body as { reason?: string };
+    if (!reason || !reason.trim()) return res.status(400).json({ ok: false, error: "reason is required" });
+
+    const deal = await DealModel.findById(req.params.id);
+    if (!deal) return res.status(404).json({ ok: false, error: "deal not found" });
+    if (deal.status !== "SUBMITTED") return res.status(409).json({ ok: false, error: "illegal transition" });
+
+    deal.status = "REJECTED";
+    deal.rejectionReason = reason.trim();
+    await deal.save();
+
+    await NotificationModel.create({
+      userId: deal.createdByUserId,
+      type: "deal_rejected",
+      message: `Your deal "${deal.title}" was rejected. Reason: ${reason.trim()}`,
+      dealId: deal._id,
+    });
+
+    return res.json({ ok: true, data: deal });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
+
+export async function getBotInteractions(_req: Request, res: Response) {
+  try {
+    const logs = await BotInteractionModel.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate("userId", "email role");
+    return res.json({ ok: true, data: logs });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
