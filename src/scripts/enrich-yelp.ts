@@ -195,7 +195,7 @@ async function enrich() {
           status: "PUBLISHED",
           createdByUserId: adminUser._id,
           startAt: new Date(),
-          endAt: daysFromNow(30),
+          endAt: daysFromNow(1),
         });
         totalDeals++;
       }

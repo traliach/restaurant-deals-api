@@ -254,7 +254,7 @@ async function seed() {
           status: "SUBMITTED",
           createdByUserId: owner._id,
           startAt: new Date(),
-          endAt: daysFromNow(30),
+          endAt: daysFromNow(1),
         });
 
         // Auto-approve so deals appear in the public feed.
