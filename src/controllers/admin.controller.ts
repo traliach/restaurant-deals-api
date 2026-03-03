@@ -60,6 +60,10 @@ export async function approveDeal(req: Request, res: Response) {
 
     deal.status = "PUBLISHED";
     deal.rejectionReason = undefined;
+    // Auto-expire 24 h from approval unless the owner already set a custom endAt.
+    if (!deal.endAt || deal.endAt < new Date()) {
+      deal.endAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
     await deal.save();
 
     await NotificationModel.create({
