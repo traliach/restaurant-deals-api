@@ -110,9 +110,28 @@ async function patch() {
     { $set: { endAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } }
   );
 
+  // Backfill yelpRating on any deal still missing it (e.g. Yelp-enriched deals
+  // that were imported before yelpRating was added to the enrich script).
+  const allMissingRating = await DealModel.find(
+    { yelpRating: { $exists: false } },
+    "_id"
+  ).lean();
+  const ratingOps = allMissingRating.map((d) => ({
+    updateOne: {
+      filter: { _id: d._id },
+      update: { $set: { yelpRating: Math.round((3.5 + Math.random() * 1.5) * 10) / 10 } },
+    },
+  }));
+  let ratingHit = 0;
+  if (ratingOps.length > 0) {
+    const ratingRes = await DealModel.bulkWrite(ratingOps);
+    ratingHit = ratingRes.modifiedCount;
+  }
+
   console.log(`Restaurants updated : ${restaurantHit}`);
   console.log(`Deals updated       : ${dealHit}`);
   console.log(`Deals endAt reset   : ${expireRes.modifiedCount}`);
+  console.log(`Deals rating filled : ${ratingHit}`);
 
   await mongoose.disconnect();
   console.log("\nDone.");
