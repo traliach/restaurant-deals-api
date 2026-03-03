@@ -7,19 +7,27 @@ import { UserModel } from "../models/User";
 
 export async function getStats(_req: Request, res: Response) {
   try {
-    const [totalUsers, owners, customers, admins, totalRestaurants, dealsByStatus] = await Promise.all([
+    const [totalUsers, owners, customers, admins, totalRestaurants, dealsByStatus, topOwnersRaw] = await Promise.all([
       UserModel.countDocuments(),
       UserModel.countDocuments({ role: "owner" }),
       UserModel.countDocuments({ role: "customer" }),
       UserModel.countDocuments({ role: "admin" }),
       RestaurantModel.countDocuments(),
       DealModel.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+      DealModel.aggregate([
+        { $group: { _id: "$createdByUserId", totalDeals: { $sum: 1 }, published: { $sum: { $cond: [{ $eq: ["$status", "PUBLISHED"] }, 1, 0] } } } },
+        { $sort: { totalDeals: -1 } },
+        { $limit: 5 },
+        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+        { $unwind: { path: "$user", preserveNullAndEmpty: true } },
+        { $project: { _id: 0, email: "$user.email", restaurantId: "$user.restaurantId", totalDeals: 1, published: 1 } },
+      ]),
     ]);
 
     const dealCounts = { DRAFT: 0, SUBMITTED: 0, PUBLISHED: 0, REJECTED: 0 } as Record<string, number>;
     for (const d of dealsByStatus) dealCounts[d._id as string] = d.count;
 
-    return res.json({ ok: true, data: { totalUsers, owners, customers, admins, totalRestaurants, dealCounts } });
+    return res.json({ ok: true, data: { totalUsers, owners, customers, admins, totalRestaurants, dealCounts, topOwners: topOwnersRaw } });
   } catch {
     return res.status(500).json({ ok: false, error: "server error" });
   }
