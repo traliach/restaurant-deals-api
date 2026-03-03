@@ -17,6 +17,11 @@ const restaurantSchema = new Schema(
     website: { type: String, trim: true },
     rating: { type: Number, min: 0, max: 10 },
     imageUrl: { type: String, trim: true },
+    cuisineType: {
+      type: String,
+      enum: ["French", "Italian", "Spanish", "American", "Asian", "Mexican", "Mediterranean", "Other"],
+      trim: true,
+    },
   },
   { timestamps: true }
 );

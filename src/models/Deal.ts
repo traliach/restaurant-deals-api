@@ -24,6 +24,13 @@ const dealSchema = new Schema(
     value: { type: Number },
     price: { type: Number },
     imageUrl: { type: String, trim: true },
+    cuisineType: {
+      type: String,
+      enum: ["French", "Italian", "Spanish", "American", "Asian", "Mexican", "Mediterranean", "Other"],
+      trim: true,
+    },
+    dietaryTags: [{ type: String, enum: ["Vegan", "Vegetarian", "Gluten-Free", "Halal", "Keto", "Dairy-Free"], trim: true }],
+    yelpRating: { type: Number, min: 0, max: 5 },
     tags: [{ type: String, trim: true }],
     startAt: { type: Date },
     endAt: { type: Date },
