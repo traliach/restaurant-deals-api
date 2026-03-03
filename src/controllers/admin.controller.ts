@@ -113,6 +113,23 @@ export async function rejectDeal(req: Request, res: Response) {
   }
 }
 
+export async function deleteUser(req: Request, res: Response) {
+  try {
+    const requesterId = res.locals.auth?.userId as string | undefined;
+    const target = await UserModel.findById(req.params.id);
+    if (!target) return res.status(404).json({ ok: false, error: "user not found" });
+    if (target._id.toString() === requesterId)
+      return res.status(400).json({ ok: false, error: "cannot delete yourself" });
+    if (target.role === "admin")
+      return res.status(403).json({ ok: false, error: "cannot delete another admin" });
+
+    await UserModel.deleteOne({ _id: target._id });
+    return res.json({ ok: true, data: { deleted: true } });
+  } catch {
+    return res.status(500).json({ ok: false, error: "server error" });
+  }
+}
+
 export async function getBotInteractions(_req: Request, res: Response) {
   try {
     const logs = await BotInteractionModel.find()
