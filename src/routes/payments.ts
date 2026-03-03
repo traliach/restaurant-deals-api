@@ -26,7 +26,8 @@ router.post("/create-intent", requireAuth, async (req, res) => {
     });
 
     return res.json({ ok: true, data: { clientSecret: paymentIntent.client_secret } });
-  } catch {
+  } catch (err) {
+    console.error("[Stripe]", err instanceof Error ? err.message : err);
     return res.status(500).json({ ok: false, error: "stripe error" });
   }
 });
