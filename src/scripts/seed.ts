@@ -101,6 +101,7 @@ const DEAL_TEMPLATES = [
     discountType: "percent" as const,
     value: 20,
     price: 14.99,
+    expiryHours: 4,   // burns out fast — order before the lunch rush ends
   },
   {
     title: "Happy Hour Bites",
@@ -109,6 +110,7 @@ const DEAL_TEMPLATES = [
     discountType: "amount" as const,
     value: 8,
     price: 22.00,
+    expiryHours: 6,   // badge happy-hour style
   },
   {
     title: "Family Dinner Pack",
@@ -117,6 +119,7 @@ const DEAL_TEMPLATES = [
     discountType: "percent" as const,
     value: 15,
     price: 54.99,
+    expiryHours: 48,  // plan-ahead deal
   },
   {
     title: "Buy One Get One",
@@ -125,6 +128,7 @@ const DEAL_TEMPLATES = [
     discountType: "bogo" as const,
     value: 0,
     price: 18.50,
+    expiryHours: 12,  // limited daily offer
   },
   {
     title: "Weekend Brunch Deal",
@@ -133,6 +137,7 @@ const DEAL_TEMPLATES = [
     discountType: "amount" as const,
     value: 10,
     price: 26.00,
+    expiryHours: 24,  // full day
   },
 ];
 
@@ -150,10 +155,8 @@ function picsum(seed: string) {
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/800/400`;
 }
 
-function daysFromNow(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d;
+function hoursFromNow(h: number) {
+  return new Date(Date.now() + h * 60 * 60 * 1000);
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -193,7 +196,7 @@ async function seed() {
         email: ownerEmail,
         passwordHash: await hashPassword(PASSWORD),
         role: "owner",
-        restaurantId: restaurantSlug,
+        restaurantId: `${restaurantSlug}-1`,
       });
       console.log(`Created owner: ${ownerEmail}`);
     }
@@ -254,7 +257,7 @@ async function seed() {
           status: "SUBMITTED",
           createdByUserId: owner._id,
           startAt: new Date(),
-          endAt: daysFromNow(1),
+          endAt: hoursFromNow(tmpl.expiryHours),
         });
 
         // Auto-approve so deals appear in the public feed.

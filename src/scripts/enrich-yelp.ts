@@ -34,11 +34,11 @@ const CITIES: { city: string; location: string }[] = [
 ];
 
 const DEAL_TEMPLATES = [
-  { title: "Chef's Daily Special", description: "Fresh seasonal ingredients prepared by our head chef. Available daily until sold out.", dealType: "Lunch" as const, discountType: "percent" as const, value: 20, price: 16.99 },
-  { title: "Happy Hour Bites", description: "Half-price appetizers every weekday 4–7pm. Perfect for after-work gatherings.", dealType: "Carryout" as const, discountType: "amount" as const, value: 8, price: 22.00 },
-  { title: "Family Feast Pack", description: "Feeds a family of four. Two entrees, sides, and a shared dessert. Order ahead.", dealType: "Carryout" as const, discountType: "percent" as const, value: 15, price: 59.99 },
-  { title: "Buy One Get One", description: "Order any entrée and receive a second of equal or lesser value free.", dealType: "Delivery" as const, discountType: "bogo" as const, value: 0, price: 19.50 },
-  { title: "Weekend Brunch Deal", description: "Bottomless coffee and juice included with any brunch plate Saturday and Sunday.", dealType: "Other" as const, discountType: "amount" as const, value: 10, price: 28.00 },
+  { title: "Chef's Daily Special", description: "Fresh seasonal ingredients prepared by our head chef. Available daily until sold out.", dealType: "Lunch" as const, discountType: "percent" as const, value: 20, price: 16.99, expiryHours: 4 },
+  { title: "Happy Hour Bites", description: "Half-price appetizers every weekday 4–7pm. Perfect for after-work gatherings.", dealType: "Carryout" as const, discountType: "amount" as const, value: 8, price: 22.00, expiryHours: 6 },
+  { title: "Family Feast Pack", description: "Feeds a family of four. Two entrees, sides, and a shared dessert. Order ahead.", dealType: "Carryout" as const, discountType: "percent" as const, value: 15, price: 59.99, expiryHours: 48 },
+  { title: "Buy One Get One", description: "Order any entrée and receive a second of equal or lesser value free.", dealType: "Delivery" as const, discountType: "bogo" as const, value: 0, price: 19.50, expiryHours: 12 },
+  { title: "Weekend Brunch Deal", description: "Bottomless coffee and juice included with any brunch plate Saturday and Sunday.", dealType: "Other" as const, discountType: "amount" as const, value: 10, price: 28.00, expiryHours: 24 },
 ];
 
 type CuisineType = "French" | "Italian" | "Spanish" | "American" | "Asian" | "Mexican" | "Mediterranean" | "Other";
@@ -102,10 +102,8 @@ async function searchYelp(location: string, limit = 5): Promise<YelpBusiness[]> 
   return data.businesses ?? [];
 }
 
-function daysFromNow(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d;
+function hoursFromNow(h: number) {
+  return new Date(Date.now() + h * 60 * 60 * 1000);
 }
 
 async function enrich() {
@@ -133,54 +131,62 @@ async function enrich() {
       continue;
     }
 
-    const existing = await RestaurantModel.countDocuments({ city, source: "yelp" });
-    if (existing > 0) {
-      console.log(`Skipping ${city} — already enriched (${existing} restaurants)`);
-      continue;
-    }
+    // Check for existing Yelp restaurants for this city — use them directly if present,
+    // otherwise fetch from Yelp API and create them.
+    let yelpRestaurants = await RestaurantModel.find({ city, source: "yelp" });
 
-    console.log(`Fetching restaurants in ${location}...`);
-    const businesses = await searchYelp(location, 5);
+    if (yelpRestaurants.length === 0) {
+      console.log(`Fetching restaurants in ${location}...`);
+      const businesses = await searchYelp(location, 5);
 
-    if (businesses.length === 0) {
-      console.log(`  No results for ${location}`);
-      continue;
-    }
-
-    for (const biz of businesses) {
-      const restaurantId = `yelp-${biz.id}`;
-      const existing = await RestaurantModel.findOne({ restaurantId });
-      if (existing) {
-        console.log(`  Skipping duplicate: ${biz.name}`);
+      if (businesses.length === 0) {
+        console.log(`  No results for ${location}`);
         continue;
       }
 
-      const address = biz.location?.display_address?.join(", ") ?? "";
-      const cuisineType = mapYelpCuisine(biz.categories);
+      for (const biz of businesses) {
+        const restaurantId = `yelp-${biz.id}`;
+        const dup = await RestaurantModel.findOne({ restaurantId });
+        if (dup) { console.log(`  Skipping duplicate: ${biz.name}`); continue; }
 
-      await RestaurantModel.create({
-        restaurantId,
-        name: biz.name,
-        ownerId: adminUser._id,
-        source: "yelp",
-        description: `${biz.name} is a real restaurant imported from Yelp. Rating: ${biz.rating ?? "N/A"}/5.`,
-        address,
-        city,
-        latitude: biz.coordinates?.latitude,
-        longitude: biz.coordinates?.longitude,
-        phone: biz.phone,
-        website: biz.url,
-        rating: biz.rating ? biz.rating * 2 : undefined, // convert 0-5 → 0-10 to match schema
-        imageUrl: biz.image_url,
-        cuisineType,
-      });
-      totalRestaurants++;
+        const address = biz.location?.display_address?.join(", ") ?? "";
+        const cuisineType = mapYelpCuisine(biz.categories);
 
-      for (const tmpl of DEAL_TEMPLATES) {
-        await DealModel.create({
+        await RestaurantModel.create({
           restaurantId,
-          restaurantName: biz.name,
-          restaurantAddress: address,
+          name: biz.name,
+          ownerId: adminUser._id,
+          source: "yelp",
+          description: `${biz.name} is a real restaurant imported from Yelp. Rating: ${biz.rating ?? "N/A"}/5.`,
+          address,
+          city,
+          latitude: biz.coordinates?.latitude,
+          longitude: biz.coordinates?.longitude,
+          phone: biz.phone,
+          website: biz.url,
+          rating: biz.rating ? biz.rating * 2 : undefined,
+          imageUrl: biz.image_url,
+          cuisineType,
+        });
+        totalRestaurants++;
+        console.log(`  ✓ ${biz.name} (${city}) rating:${biz.rating ?? "n/a"}`);
+      }
+
+      yelpRestaurants = await RestaurantModel.find({ city, source: "yelp" });
+    } else {
+      console.log(`${city} — ${yelpRestaurants.length} restaurants already in DB, checking deals...`);
+    }
+
+    // Create any missing deals for each Yelp restaurant in this city.
+    for (const rest of yelpRestaurants) {
+      for (const tmpl of DEAL_TEMPLATES) {
+        const exists = await DealModel.findOne({ restaurantId: rest.restaurantId, title: tmpl.title });
+        if (exists) continue;
+
+        await DealModel.create({
+          restaurantId: rest.restaurantId,
+          restaurantName: rest.name,
+          restaurantAddress: rest.address,
           restaurantCity: city,
           restaurantSource: "yelp",
           title: tmpl.title,
@@ -189,18 +195,16 @@ async function enrich() {
           discountType: tmpl.discountType,
           value: tmpl.value,
           price: tmpl.price,
-          imageUrl: biz.image_url,
-          cuisineType,
-          yelpRating: biz.rating,
+          imageUrl: rest.imageUrl,
+          cuisineType: rest.cuisineType,
           status: "PUBLISHED",
           createdByUserId: adminUser._id,
           startAt: new Date(),
-          endAt: daysFromNow(1),
+          endAt: hoursFromNow(tmpl.expiryHours),
         });
         totalDeals++;
       }
-
-      console.log(`  ✓ ${biz.name} (${city}) rating:${biz.rating ?? "n/a"}`);
+      console.log(`  ✓ deals ensured for ${rest.name}`);
     }
   }
 

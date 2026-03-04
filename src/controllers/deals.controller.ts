@@ -78,11 +78,11 @@ export async function listOwnerDeals(req: Request, res: Response, next: NextFunc
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
 
     const owner = await UserModel.findById(userId);
-    if (!owner || owner.role !== "owner" || !owner.restaurantId)
+    if (!owner || owner.role !== "owner")
       return res.status(403).json({ ok: false, error: "owner profile incomplete" });
 
     const status = req.query.status;
-    const filter: { restaurantId: string; status?: string } = { restaurantId: owner.restaurantId };
+    const filter: { createdByUserId: string; status?: string } = { createdByUserId: owner._id.toString() };
     if (typeof status === "string" && ["DRAFT", "SUBMITTED", "PUBLISHED", "REJECTED"].includes(status))
       filter.status = status;
 
@@ -140,11 +140,11 @@ export async function updateOwnerDeal(req: Request, res: Response, next: NextFun
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
 
     const owner = await UserModel.findById(userId);
-    if (!owner || owner.role !== "owner" || !owner.restaurantId)
+    if (!owner || owner.role !== "owner")
       return res.status(403).json({ ok: false, error: "owner profile incomplete" });
 
     const deal = await DealModel.findById(req.params.id);
-    if (!deal || deal.restaurantId !== owner.restaurantId)
+    if (!deal || deal.createdByUserId.toString() !== owner._id.toString())
       return res.status(404).json({ ok: false, error: "deal not found" });
 
     if (deal.status !== "DRAFT" && deal.status !== "REJECTED")
@@ -172,11 +172,11 @@ export async function deleteOwnerDeal(req: Request, res: Response, next: NextFun
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
 
     const owner = await UserModel.findById(userId);
-    if (!owner || owner.role !== "owner" || !owner.restaurantId)
+    if (!owner || owner.role !== "owner")
       return res.status(403).json({ ok: false, error: "owner profile incomplete" });
 
     const deal = await DealModel.findById(req.params.id);
-    if (!deal || deal.restaurantId !== owner.restaurantId)
+    if (!deal || deal.createdByUserId.toString() !== owner._id.toString())
       return res.status(404).json({ ok: false, error: "deal not found" });
 
     if (deal.status !== "DRAFT") return res.status(409).json({ ok: false, error: "illegal transition" });
@@ -192,11 +192,11 @@ export async function submitOwnerDeal(req: Request, res: Response, next: NextFun
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
 
     const owner = await UserModel.findById(userId);
-    if (!owner || owner.role !== "owner" || !owner.restaurantId)
+    if (!owner || owner.role !== "owner")
       return res.status(403).json({ ok: false, error: "owner profile incomplete" });
 
     const deal = await DealModel.findById(req.params.id);
-    if (!deal || deal.restaurantId !== owner.restaurantId)
+    if (!deal || deal.createdByUserId.toString() !== owner._id.toString())
       return res.status(404).json({ ok: false, error: "deal not found" });
 
     if (deal.status !== "DRAFT" && deal.status !== "REJECTED")

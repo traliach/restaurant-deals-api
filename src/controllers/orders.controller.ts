@@ -80,11 +80,28 @@ export async function listOwnerOrders(req: Request, res: Response) {
     const owner = await UserModel.findById(userId);
     if (!owner) return res.status(403).json({ ok: false, error: "owner profile incomplete" });
 
-    const restaurants = await RestaurantModel.find({ ownerId: owner._id }, "restaurantId");
-    const restaurantIds = restaurants.map((r) => r.restaurantId);
+    // Collect all restaurant IDs this owner controls:
+    // 1. Seed restaurants linked via RestaurantModel (e.g. "newark-owner-1" .. "newark-owner-5")
+    // 2. The owner's direct restaurantId on their User doc (used by portal-created deals)
+    const ownedRestaurants = await RestaurantModel.find({ ownerId: owner._id }, "restaurantId");
+    const restaurantIds = new Set(ownedRestaurants.map((r) => r.restaurantId));
+    if (owner.restaurantId) restaurantIds.add(owner.restaurantId);
 
-    const orders = await OrderModel.find({ "items.restaurantId": { $in: restaurantIds } }).sort({ createdAt: -1 });
-    return res.json({ ok: true, data: orders });
+    const ownerDeals = await DealModel.find({ restaurantId: { $in: [...restaurantIds] } }, "_id");
+    const dealIds = ownerDeals.map((d) => d._id);
+    const dealIdStrings = new Set(dealIds.map(String));
+
+    const orders = await OrderModel.find({ "items.dealId": { $in: dealIds } }).sort({ createdAt: -1 });
+
+    // Scope each order to only this owner's items and recompute the total.
+    // Prevents cross-restaurant leakage when a cart mixes deals from multiple owners.
+    const scoped = orders.map((o) => {
+      const myItems = o.items.filter((item) => dealIdStrings.has(item.dealId.toString()));
+      const myTotal = myItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+      return { ...o.toObject(), items: myItems, total: myTotal };
+    });
+
+    return res.json({ ok: true, data: scoped });
   } catch {
     return res.status(500).json({ ok: false, error: "server error" });
   }
@@ -103,10 +120,14 @@ export async function updateOwnerOrderStatus(req: Request, res: Response) {
     if (!status || !ORDER_STATUSES.includes(status))
       return res.status(400).json({ ok: false, error: "invalid status" });
 
-    const restaurants = await RestaurantModel.find({ ownerId: owner._id }, "restaurantId");
-    const restaurantIds = restaurants.map((r) => r.restaurantId);
+    const ownedRestaurants = await RestaurantModel.find({ ownerId: owner._id }, "restaurantId");
+    const restaurantIds = new Set(ownedRestaurants.map((r) => r.restaurantId));
+    if (owner.restaurantId) restaurantIds.add(owner.restaurantId);
 
-    const order = await OrderModel.findOne({ _id: req.params.id, "items.restaurantId": { $in: restaurantIds } });
+    const ownerDeals = await DealModel.find({ restaurantId: { $in: [...restaurantIds] } }, "_id");
+    const dealIds = ownerDeals.map((d) => d._id);
+
+    const order = await OrderModel.findOne({ _id: req.params.id, "items.dealId": { $in: dealIds } });
     if (!order) return res.status(404).json({ ok: false, error: "order not found" });
 
     const currentIdx = ORDER_STATUSES.indexOf(order.status);
