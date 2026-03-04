@@ -133,7 +133,7 @@ router.put(
       if (address !== undefined) restaurant.address = address;
       if (phone !== undefined) restaurant.phone = phone;
       if (imageUrl !== undefined) restaurant.imageUrl = imageUrl;
-      if (cuisineType !== undefined) (restaurant as Record<string, unknown>).cuisineType = cuisineType;
+      if (cuisineType !== undefined) (restaurant as unknown as Record<string, unknown>).cuisineType = cuisineType;
 
       await restaurant.save();
       return res.json({ ok: true, data: restaurant });

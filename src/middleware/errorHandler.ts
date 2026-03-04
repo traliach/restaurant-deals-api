@@ -7,6 +7,6 @@ export function errorHandler(
   _next: NextFunction
 ) {
   const msg = err instanceof Error ? err.message : String(err);
-  console.error(`[error] ${req.method} ${req.originalUrl} ${res.locals.requestId ?? ""} — ${msg.slice(0, 500)}`);
+  console.error(`[error] ${_req.method} ${_req.originalUrl} ${res.locals.requestId ?? ""} — ${msg.slice(0, 500)}`);
   return res.status(500).json({ ok: false, error: "server error" });
 }
