@@ -1,11 +1,11 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { BotInteractionModel } from "../models/BotInteraction";
 import { DealModel } from "../models/Deal";
 import { NotificationModel } from "../models/Notification";
 import { RestaurantModel } from "../models/Restaurant";
 import { UserModel } from "../models/User";
 
-export async function getStats(_req: Request, res: Response) {
+export async function getStats(_req: Request, res: Response, next: NextFunction) {
   try {
     const [totalUsers, owners, customers, admins, totalRestaurants, dealsByStatus, topOwnersRaw] = await Promise.all([
       UserModel.countDocuments(),
@@ -28,39 +28,31 @@ export async function getStats(_req: Request, res: Response) {
     for (const d of dealsByStatus) dealCounts[d._id as string] = d.count;
 
     return res.json({ ok: true, data: { totalUsers, owners, customers, admins, totalRestaurants, dealCounts, topOwners: topOwnersRaw } });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function getAllUsers(_req: Request, res: Response) {
+export async function getAllUsers(_req: Request, res: Response, next: NextFunction) {
   try {
     const users = await UserModel.find({}, "-passwordHash").sort({ createdAt: -1 });
     return res.json({ ok: true, data: users });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function getAllDeals(_req: Request, res: Response) {
+export async function getAllDeals(_req: Request, res: Response, next: NextFunction) {
   try {
     const items = await DealModel.find().sort({ createdAt: -1 });
     return res.json({ ok: true, data: items });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function getSubmittedDeals(_req: Request, res: Response) {
+export async function getSubmittedDeals(_req: Request, res: Response, next: NextFunction) {
   try {
     const items = await DealModel.find({ status: "SUBMITTED" }).sort({ createdAt: -1 });
     return res.json({ ok: true, data: items });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function approveDeal(req: Request, res: Response) {
+export async function approveDeal(req: Request, res: Response, next: NextFunction) {
   try {
     const deal = await DealModel.findById(req.params.id);
     if (!deal) return res.status(404).json({ ok: false, error: "deal not found" });
@@ -82,12 +74,10 @@ export async function approveDeal(req: Request, res: Response) {
     });
 
     return res.json({ ok: true, data: deal });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function rejectDeal(req: Request, res: Response) {
+export async function rejectDeal(req: Request, res: Response, next: NextFunction) {
   try {
     const { reason } = req.body as { reason?: string };
     if (!reason || !reason.trim()) return res.status(400).json({ ok: false, error: "reason is required" });
@@ -108,12 +98,10 @@ export async function rejectDeal(req: Request, res: Response) {
     });
 
     return res.json({ ok: true, data: deal });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function deleteUser(req: Request, res: Response) {
+export async function deleteUser(req: Request, res: Response, next: NextFunction) {
   try {
     const requesterId = res.locals.auth?.userId as string | undefined;
     const target = await UserModel.findById(req.params.id);
@@ -125,19 +113,15 @@ export async function deleteUser(req: Request, res: Response) {
 
     await UserModel.deleteOne({ _id: target._id });
     return res.json({ ok: true, data: { deleted: true } });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function getBotInteractions(_req: Request, res: Response) {
+export async function getBotInteractions(_req: Request, res: Response, next: NextFunction) {
   try {
     const logs = await BotInteractionModel.find()
       .sort({ createdAt: -1 })
       .limit(100)
       .populate("userId", "email role");
     return res.json({ ok: true, data: logs });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
