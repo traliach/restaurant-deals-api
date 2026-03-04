@@ -12,7 +12,7 @@ REST API for a moderated restaurant deals marketplace. Restaurant owners create 
 - Restaurant profiles (owner-managed, Yelp-enrichable)
 - Orders with immutable OrderItem snapshots (price locked at purchase)
 - Stripe payment intents + webhook for order confirmation
-- Notifications (deal approved/rejected, order status changes)
+- Notifications (deal approved/rejected, order placed, order status changes)
 - AI bot chat (Groq) — translates natural language into deal filters with admin audit log
 - Yelp Fusion API proxy for real restaurant discovery and enrichment
 
@@ -42,6 +42,7 @@ npm run dev
 | `npm start`                       | Run compiled JS from `dist/`         |
 | `npx ts-node src/scripts/seed.ts` | Seed demo data (150 deals)           |
 | `npx ts-node src/scripts/enrich-yelp.ts` | Import real Yelp restaurants  |
+| `npx ts-node src/scripts/reset.ts` | Reset demo data (clear orders/notifications, restore deal expiry) |
 
 ## Environment Variables
 
@@ -111,6 +112,7 @@ Query params for `GET /api/deals`: `q`, `dealType`, `city`, `source` (seed/yelp)
 |--------|--------------------------------|--------|-------------------------|
 | POST   | `/api/orders`                  | Auth   | Create order (checkout) |
 | GET    | `/api/orders`                  | Auth   | List own orders         |
+| GET    | `/api/orders/:id`              | Auth   | Get single order        |
 | GET    | `/api/owner/orders`            | Owner  | List restaurant orders  |
 | PUT    | `/api/owner/orders/:id/status` | Owner  | Update order status     |
 
@@ -176,6 +178,7 @@ src/
   scripts/
     seed.ts               Seed 150 demo deals
     enrich-yelp.ts        Import real Yelp restaurants
+    reset.ts              Reset demo environment (clear test data)
 ```
 
 ## Related

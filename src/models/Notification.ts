@@ -6,7 +6,7 @@ const notificationSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
-      enum: ["deal_approved", "deal_rejected", "order_status", "deal_submitted"],
+      enum: ["deal_approved", "deal_rejected", "order_status", "deal_submitted", "order_placed"],
       required: true,
     },
     message: { type: String, required: true, trim: true },
