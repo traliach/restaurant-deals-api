@@ -1,4 +1,5 @@
 import cors from "cors";
+import crypto from "crypto";
 import express from "express";
 import { errorHandler } from "./middleware/errorHandler";
 import authRoutes from "./routes/auth";
@@ -23,6 +24,17 @@ app.use("/api/webhooks", webhookRoutes);
 // Global middleware setup.
 app.use(cors());
 app.use(express.json());
+
+app.use((req, res, next) => {
+  const requestId = crypto.randomUUID();
+  res.locals.requestId = requestId;
+  const start = Date.now();
+  console.log(`[req] ${req.method} ${req.originalUrl} ${requestId}`);
+  res.on("finish", () => {
+    console.log(`[res] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms ${requestId}`);
+  });
+  next();
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, data: { status: "up" } });

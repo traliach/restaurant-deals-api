@@ -6,7 +6,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  // Final error fallback.
-  console.error(err);
+  const msg = err instanceof Error ? err.message : String(err);
+  console.error(`[error] ${req.method} ${req.originalUrl} ${res.locals.requestId ?? ""} — ${msg.slice(0, 500)}`);
   return res.status(500).json({ ok: false, error: "server error" });
 }
