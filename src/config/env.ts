@@ -4,7 +4,8 @@ dotenv.config();
 
 // Load and validate env vars.
 export const env = {
-  API_PORT: Number(process.env.API_PORT) || 3000,
+  // Render injects PORT; fall back to API_PORT for local dev, then 3000
+  API_PORT: Number(process.env.PORT) || Number(process.env.API_PORT) || 3000,
   MONGO_URI: process.env.MONGO_URI || "",
   JWT_SECRET: process.env.JWT_SECRET || "",
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
