@@ -17,8 +17,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ ok: false, error: "unauthenticated" });
     }
 
-    // Store userId and role.
     res.locals.auth = { userId: payload.sub, role: payload.role };
+    console.log(`[auth] ${payload.sub} role=${payload.role ?? "none"} ${res.locals.requestId ?? ""}`);
     return next();
   } catch {
     return res.status(401).json({ ok: false, error: "unauthenticated" });
