@@ -1,7 +1,15 @@
 import mongoose from "mongoose";
 import { env } from "../config/env";
 
-// Connect to MongoDB Atlas.
 export async function connectDb() {
-  await mongoose.connect(env.MONGO_URI);
+  console.log("[db] connecting...");
+  await mongoose.connect(env.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+  console.log("[db] connected");
+
+  mongoose.connection.on("error", (err) =>
+    console.error("[db] error:", err.message)
+  );
+  mongoose.connection.on("disconnected", () =>
+    console.warn("[db] disconnected")
+  );
 }
