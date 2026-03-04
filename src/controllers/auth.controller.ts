@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
@@ -13,7 +13,7 @@ function buildUserPayload(user: { _id: unknown; email: string; role: string; res
   };
 }
 
-export async function register(req: Request, res: Response) {
+export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password, role = "customer", restaurantId } = req.body as {
       email?: string;
@@ -37,12 +37,10 @@ export async function register(req: Request, res: Response) {
 
     const token = jwt.sign({ sub: user._id.toString(), role: user.role }, env.JWT_SECRET, { expiresIn: "7d" });
     return res.status(201).json({ ok: true, data: { token, user: buildUserPayload(user) } });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function login(req: Request, res: Response) {
+export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body as { email?: string; password?: string };
     if (!email || !password) {
@@ -57,18 +55,14 @@ export async function login(req: Request, res: Response) {
 
     const token = jwt.sign({ sub: user._id.toString(), role: user.role }, env.JWT_SECRET, { expiresIn: "7d" });
     return res.json({ ok: true, data: { token, user: buildUserPayload(user) } });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function me(_req: Request, res: Response) {
+export async function me(_req: Request, res: Response, next: NextFunction) {
   try {
     const userId = res.locals.auth?.userId as string | undefined;
     const user = userId ? await UserModel.findById(userId) : null;
     if (!user) return res.status(404).json({ ok: false, error: "user not found" });
     return res.json({ ok: true, data: { user: buildUserPayload(user) } });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
