@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { DealModel } from "../models/Deal";
 import { NotificationModel } from "../models/Notification";
 import { RestaurantModel } from "../models/Restaurant";
@@ -6,7 +6,7 @@ import { UserModel } from "../models/User";
 
 // ─── Public ───────────────────────────────────────────────────────────────────
 
-export async function listPublicDeals(req: Request, res: Response) {
+export async function listPublicDeals(req: Request, res: Response, next: NextFunction) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
@@ -59,24 +59,20 @@ export async function listPublicDeals(req: Request, res: Response) {
       ok: true,
       data: { items, page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
     });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function getPublicDeal(req: Request, res: Response) {
+export async function getPublicDeal(req: Request, res: Response, next: NextFunction) {
   try {
     const deal = await DealModel.findOne({ _id: req.params.id, status: "PUBLISHED" });
     if (!deal) return res.status(404).json({ ok: false, error: "deal not found" });
     return res.json({ ok: true, data: deal });
-  } catch {
-    return res.status(404).json({ ok: false, error: "deal not found" });
-  }
+  } catch (err) { return next(err); }
 }
 
 // ─── Owner ────────────────────────────────────────────────────────────────────
 
-export async function listOwnerDeals(req: Request, res: Response) {
+export async function listOwnerDeals(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = res.locals.auth?.userId as string | undefined;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
@@ -92,12 +88,10 @@ export async function listOwnerDeals(req: Request, res: Response) {
 
     const items = await DealModel.find(filter).sort({ createdAt: -1 });
     return res.json({ ok: true, data: items });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function createOwnerDeal(req: Request, res: Response) {
+export async function createOwnerDeal(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = res.locals.auth?.userId as string | undefined;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
@@ -137,12 +131,10 @@ export async function createOwnerDeal(req: Request, res: Response) {
     });
 
     return res.status(201).json({ ok: true, data: created });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function updateOwnerDeal(req: Request, res: Response) {
+export async function updateOwnerDeal(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = res.locals.auth?.userId as string | undefined;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
@@ -171,12 +163,10 @@ export async function updateOwnerDeal(req: Request, res: Response) {
 
     await deal.save();
     return res.json({ ok: true, data: deal });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function deleteOwnerDeal(req: Request, res: Response) {
+export async function deleteOwnerDeal(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = res.locals.auth?.userId as string | undefined;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
@@ -193,12 +183,10 @@ export async function deleteOwnerDeal(req: Request, res: Response) {
 
     await DealModel.deleteOne({ _id: deal._id });
     return res.json({ ok: true, data: { deleted: true } });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
 
-export async function submitOwnerDeal(req: Request, res: Response) {
+export async function submitOwnerDeal(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = res.locals.auth?.userId as string | undefined;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
@@ -231,7 +219,5 @@ export async function submitOwnerDeal(req: Request, res: Response) {
     }
 
     return res.json({ ok: true, data: deal });
-  } catch {
-    return res.status(500).json({ ok: false, error: "server error" });
-  }
+  } catch (err) { return next(err); }
 }
