@@ -1,171 +1,269 @@
 /**
- * Seed script — creates realistic demo data for Restaurant Deals.
+ * Seed script — creates a compact, more realistic demo dataset.
  * Run: npx ts-node src/scripts/seed.ts
  *
  * Creates:
  *  - 1 admin account
- *  - 6 owner accounts (one per city)
- *  - 30 restaurant profiles (5 per city)
- *  - 150 published deals (5 per restaurant, mixed types)
+ *  - 3 owner accounts (one per city)
+ *  - 9 restaurant profiles (3 per city)
+ *  - 2-3 varied deals per restaurant
  *
- * Cities: Newark, Jersey City, NYC, Brooklyn, Hoboken, Montclair
+ * Reruns replace old seed-only data so the demo stays clean.
  */
 
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { DealModel } from "../models/Deal";
+import { FavoriteModel } from "../models/Favorite";
+import { NotificationModel } from "../models/Notification";
+import { OrderModel } from "../models/Order";
 import { RestaurantModel } from "../models/Restaurant";
 import { UserModel } from "../models/User";
 
 dotenv.config();
 
 const MONGO_URI = process.env.MONGO_URI || "";
-const JWT_SECRET = process.env.JWT_SECRET || "secret";
 const PASSWORD = "Demo123!";
 
-// ─── City data ────────────────────────────────────────────────────────────────
+type CuisineType =
+  | "French"
+  | "Italian"
+  | "Spanish"
+  | "American"
+  | "Asian"
+  | "Mexican"
+  | "Mediterranean"
+  | "Other";
 
-const CITIES = [
-  { city: "Newark", state: "NJ" },
-  { city: "Jersey City", state: "NJ" },
-  { city: "New York", state: "NY" },
-  { city: "Brooklyn", state: "NY" },
-  { city: "Hoboken", state: "NJ" },
-  { city: "Montclair", state: "NJ" },
-];
+type DietaryTag =
+  | "Vegan"
+  | "Vegetarian"
+  | "Gluten-Free"
+  | "Halal"
+  | "Keto"
+  | "Dairy-Free";
 
-// ─── Restaurant data ──────────────────────────────────────────────────────────
-
-const RESTAURANT_NAMES = [
-  ["Ironbound Steakhouse", "Ferry St Tapas", "Seabra's Marisqueira", "Porto's Kitchen", "Brasilia Grill"],
-  ["Skinner's Loft", "Light Horse Tavern", "Taqueria Downtown", "Satis Bistro", "Porta Pizza"],
-  ["The NoMad Bar", "Balthazar Brasserie", "Superiority Burger", "Ivan Ramen", "Xi'an Famous Foods"],
-  ["Lucali Pizza", "Di Fara Pizza", "Roberta's", "Olmsted", "The River Café"],
-  ["Antique Bar & Bakery", "Amanda's Restaurant", "Bwe Kafe", "Leo's Grandevous", "Bin 14"],
-  ["Pig & Prince", "Raymond's", "Halcyon", "Fascino", "Fresco Il Ristorante"],
-];
-
-const ADDRESSES = [
-  ["120 Ferry St", "321 Elm Ave", "87 Madison St", "15 Central Ave", "203 Market St"],
-  ["40 Hudson St", "199 Marin Blvd", "510 Grand St", "212 Washington St", "4 Erie St"],
-  ["10 W 28th St", "80 Spring St", "430 E 9th St", "25 Clinton St", "81 St Marks Pl"],
-  ["575 Henry St", "1424 Ave J", "261 Moore St", "659 Washington Ave", "1 Water St"],
-  ["711 Washington St", "908 Washington St", "818 Washington St", "200 Washington St", "1104 Washington St"],
-  ["57 Walnut St", "717 Bloomfield Ave", "555 Bloomfield Ave", "331 Bloomfield Ave", "189 Walnut St"],
-];
-
-// ─── Cuisine + dietary mappings ──────────────────────────────────────────────
-
-type CuisineType = "French" | "Italian" | "Spanish" | "American" | "Asian" | "Mexican" | "Mediterranean" | "Other";
-type DietaryTag  = "Vegan" | "Vegetarian" | "Gluten-Free" | "Halal" | "Keto" | "Dairy-Free";
-
-const RESTAURANT_CUISINE: Record<string, CuisineType> = {
-  "Ironbound Steakhouse": "American",  "Ferry St Tapas":       "Spanish",
-  "Seabra's Marisqueira": "Spanish",   "Porto's Kitchen":      "Spanish",
-  "Brasilia Grill":       "Other",
-  "Skinner's Loft":       "American",  "Light Horse Tavern":   "American",
-  "Taqueria Downtown":    "Mexican",   "Satis Bistro":         "French",
-  "Porta Pizza":          "Italian",
-  "The NoMad Bar":        "American",  "Balthazar Brasserie":  "French",
-  "Superiority Burger":   "American",  "Ivan Ramen":           "Asian",
-  "Xi'an Famous Foods":   "Asian",
-  "Lucali Pizza":         "Italian",   "Di Fara Pizza":        "Italian",
-  "Roberta's":            "Italian",   "Olmsted":              "American",
-  "The River Café":       "American",
-  "Antique Bar & Bakery": "American",  "Amanda's Restaurant":  "American",
-  "Bwe Kafe":             "Other",     "Leo's Grandevous":     "American",
-  "Bin 14":               "American",
-  "Pig & Prince":         "American",  "Raymond's":            "American",
-  "Halcyon":              "American",  "Fascino":              "Italian",
-  "Fresco Il Ristorante": "Italian",
+type SeedRestaurant = {
+  name: string;
+  address: string;
+  cuisineType: CuisineType;
+  dietaryTags?: DietaryTag[];
 };
 
-const RESTAURANT_DIETARY: Record<string, DietaryTag[]> = {
-  "Superiority Burger":   ["Vegan", "Vegetarian"],
-  "Ivan Ramen":           ["Vegetarian"],
-  "Xi'an Famous Foods":   ["Halal"],
-  "Olmsted":              ["Vegan", "Gluten-Free"],
-  "Bwe Kafe":             ["Vegan", "Vegetarian"],
-  "Seabra's Marisqueira": ["Gluten-Free"],
+type SeedCity = {
+  city: string;
+  state: string;
+  restaurants: SeedRestaurant[];
 };
 
-// ─── Deal templates ──────────────────────────────────────────────────────────
+type DealTemplate = {
+  slug: string;
+  title: (cuisine: CuisineType) => string;
+  description: (restaurantName: string, cuisine: CuisineType) => string;
+  dealType: "Lunch" | "Carryout" | "Delivery" | "Other";
+  discountType: "percent" | "amount" | "bogo" | "other";
+  value?: number;
+  price: number;
+  expiryHours: number;
+};
 
-const DEAL_TEMPLATES = [
+const CITIES: SeedCity[] = [
   {
-    title: "Lunch Special",
-    description: "Enjoy our chef's daily lunch selection with a complimentary house salad. Perfect for a midday break.",
-    dealType: "Lunch" as const,
-    discountType: "percent" as const,
+    city: "Newark",
+    state: "NJ",
+    restaurants: [
+      { name: "Ferry Street Tapas", address: "145 Ferry St", cuisineType: "Spanish", dietaryTags: ["Gluten-Free"] },
+      { name: "Brick Oven Pizza Co.", address: "222 Halsey St", cuisineType: "Italian", dietaryTags: ["Vegetarian"] },
+      { name: "Garden Bowl Kitchen", address: "19 Central Ave", cuisineType: "Mediterranean", dietaryTags: ["Vegan", "Vegetarian"] },
+    ],
+  },
+  {
+    city: "Jersey City",
+    state: "NJ",
+    restaurants: [
+      { name: "Hudson Burger House", address: "88 Newark Ave", cuisineType: "American" },
+      { name: "Marina Sushi Bar", address: "210 Marin Blvd", cuisineType: "Asian", dietaryTags: ["Halal"] },
+      { name: "Satis Corner Bistro", address: "298 Grove St", cuisineType: "French" },
+    ],
+  },
+  {
+    city: "Montclair",
+    state: "NJ",
+    restaurants: [
+      { name: "Raymond's Table", address: "28 Church St", cuisineType: "American" },
+      { name: "Pasta Verdi", address: "421 Bloomfield Ave", cuisineType: "Italian" },
+      { name: "Taco Verde", address: "613 Valley Rd", cuisineType: "Mexican", dietaryTags: ["Vegetarian"] },
+    ],
+  },
+];
+
+const DEAL_LIBRARY: DealTemplate[] = [
+  {
+    slug: "lunch-combo",
+    title: (cuisine) => `${labelCuisine(cuisine)} Lunch Combo`,
+    description: (restaurantName, cuisine) =>
+      `A weekday lunch pairing from ${restaurantName} with a popular ${labelCuisine(cuisine).toLowerCase()} entrée and side.`,
+    dealType: "Lunch",
+    discountType: "percent",
     value: 20,
-    price: 14.99,
-    expiryHours: 4,   // burns out fast — order before the lunch rush ends
+    price: 15.99,
+    expiryHours: 6,
   },
   {
-    title: "Happy Hour Bites",
-    description: "Half-price appetizers every weekday from 4–7pm. Great for after-work gatherings.",
-    dealType: "Carryout" as const,
-    discountType: "amount" as const,
+    slug: "happy-hour",
+    title: () => "Happy Hour Small Plates",
+    description: (restaurantName) =>
+      `Shareable bites and a drink special from ${restaurantName}, perfect for after-work plans.`,
+    dealType: "Carryout",
+    discountType: "amount",
     value: 8,
-    price: 22.00,
-    expiryHours: 6,   // badge happy-hour style
+    price: 21.0,
+    expiryHours: 8,
   },
   {
-    title: "Family Dinner Pack",
-    description: "Feeds a family of 4. Includes two entrees, sides, and a shared dessert. Order ahead for pickup.",
-    dealType: "Carryout" as const,
-    discountType: "percent" as const,
+    slug: "family-bundle",
+    title: () => "Family Dinner Bundle",
+    description: (restaurantName) =>
+      `A larger-format meal from ${restaurantName} with mains, sides, and enough food for a relaxed family night.`,
+    dealType: "Carryout",
+    discountType: "percent",
     value: 15,
-    price: 54.99,
-    expiryHours: 48,  // plan-ahead deal
+    price: 42.99,
+    expiryHours: 36,
   },
   {
-    title: "Buy One Get One",
-    description: "Order any entrée and get a second of equal or lesser value free. Dine-in and takeout.",
-    dealType: "Delivery" as const,
-    discountType: "bogo" as const,
-    value: 0,
-    price: 18.50,
-    expiryHours: 12,  // limited daily offer
+    slug: "bogo-entree",
+    title: () => "Two-for-One Entrees",
+    description: (restaurantName) =>
+      `Order one featured entrée at ${restaurantName} and get a second one of equal or lesser value free.`,
+    dealType: "Delivery",
+    discountType: "bogo",
+    price: 19.5,
+    expiryHours: 12,
   },
   {
-    title: "Weekend Brunch Deal",
-    description: "Bottomless coffee and fresh-squeezed juice included with any brunch plate on Saturdays and Sundays.",
-    dealType: "Other" as const,
-    discountType: "amount" as const,
+    slug: "weekend-brunch",
+    title: () => "Weekend Brunch for Two",
+    description: (restaurantName) =>
+      `A brunch-focused offer from ${restaurantName} with coffee, juice, and a better weekend start.`,
+    dealType: "Other",
+    discountType: "amount",
     value: 10,
-    price: 26.00,
-    expiryHours: 24,  // full day
+    price: 26.0,
+    expiryHours: 24,
+  },
+  {
+    slug: "pickup-special",
+    title: () => "Neighborhood Pickup Special",
+    description: (restaurantName) =>
+      `Quick pickup pricing from ${restaurantName} for busy evenings when you want something reliable and fast.`,
+    dealType: "Carryout",
+    discountType: "amount",
+    value: 6,
+    price: 18.99,
+    expiryHours: 18,
+  },
+  {
+    slug: "chef-sampler",
+    title: (cuisine) => `${labelCuisine(cuisine)} Chef's Sampler`,
+    description: (restaurantName, cuisine) =>
+      `A curated tasting from ${restaurantName} that highlights signature ${labelCuisine(cuisine).toLowerCase()} flavors.`,
+    dealType: "Other",
+    discountType: "percent",
+    value: 18,
+    price: 29.0,
+    expiryHours: 30,
+  },
+  {
+    slug: "date-night",
+    title: () => "Date Night Prix Fixe",
+    description: (restaurantName) =>
+      `A two-person dinner package from ${restaurantName} designed for a more polished evening out.`,
+    dealType: "Delivery",
+    discountType: "amount",
+    value: 12,
+    price: 34.99,
+    expiryHours: 20,
   },
 ];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function hashPassword(pw: string) {
   return bcrypt.hash(pw, 10);
-}
-
-function makeToken(userId: string, role: string) {
-  return jwt.sign({ sub: userId, role }, JWT_SECRET, { expiresIn: "7d" });
-}
-
-function picsum(seed: string) {
-  return `https://picsum.photos/seed/${encodeURIComponent(seed)}/800/400`;
 }
 
 function hoursFromNow(h: number) {
   return new Date(Date.now() + h * 60 * 60 * 1000);
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+function labelCuisine(cuisine: CuisineType) {
+  return cuisine === "Other" ? "House" : cuisine;
+}
+
+function imageForCuisine(cuisine: CuisineType) {
+  switch (cuisine) {
+    case "Italian":
+      return "/images/placeholders/pizza.jpg";
+    case "American":
+    case "Mexican":
+      return "/images/placeholders/burger.jpg";
+    case "Asian":
+      return "/images/placeholders/sushi.jpg";
+    case "French":
+      return "/images/placeholders/dessert.jpg";
+    case "Mediterranean":
+    case "Spanish":
+      return "/images/placeholders/salad.jpg";
+    default:
+      return "/images/placeholders/default.svg";
+  }
+}
+
+function ratingForIndex(index: number) {
+  return Math.round((3.9 + (index % 8) * 0.1) * 10) / 10;
+}
+
+function pickTemplates(seedIndex: number) {
+  const count = 2 + (seedIndex % 2);
+  const start = (seedIndex * 2) % DEAL_LIBRARY.length;
+  const picked: DealTemplate[] = [];
+
+  for (let i = 0; picked.length < count; i++) {
+    const template = DEAL_LIBRARY[(start + i) % DEAL_LIBRARY.length];
+    if (!picked.some((item) => item.slug === template.slug)) {
+      picked.push(template);
+    }
+  }
+
+  return picked;
+}
+
+async function clearOldSeedData() {
+  const seedDeals = await DealModel.find({ restaurantSource: "seed" }, "_id restaurantId");
+  const seedDealIds = seedDeals.map((deal) => deal._id);
+  const seedRestaurantIds = [...new Set(seedDeals.map((deal) => deal.restaurantId))];
+
+  if (seedDealIds.length) {
+    await FavoriteModel.deleteMany({ dealId: { $in: seedDealIds } });
+    await NotificationModel.deleteMany({ dealId: { $in: seedDealIds } });
+  }
+
+  if (seedRestaurantIds.length) {
+    await OrderModel.deleteMany({ "items.restaurantId": { $in: seedRestaurantIds } });
+  }
+
+  await DealModel.deleteMany({ restaurantSource: "seed" });
+  await RestaurantModel.deleteMany({ source: "seed" });
+  await UserModel.deleteMany({
+    role: "owner",
+    email: { $in: CITIES.map(({ city }) => `owner.${city.toLowerCase().replace(" ", ".")}@restaurantdeals.dev`) },
+  });
+}
 
 async function seed() {
   await mongoose.connect(MONGO_URI);
   console.log("DB connected");
 
-  // ── Admin ──
   const existingAdmin = await UserModel.findOne({ email: "admin@restaurantdeals.dev" });
   let adminUser = existingAdmin;
   if (!adminUser) {
@@ -176,103 +274,83 @@ async function seed() {
     });
     console.log("Created admin: admin@restaurantdeals.dev");
   } else {
-    console.log("Admin already exists — skipping");
+    console.log("Admin already exists — keeping");
   }
 
-  const adminToken = makeToken(adminUser._id.toString(), "admin");
+  console.log("Replacing old seed-only demo data...");
+  await clearOldSeedData();
 
-  // ── Owners, Restaurants, Deals ──
   let totalRestaurants = 0;
   let totalDeals = 0;
+  let globalIndex = 0;
 
-  for (let ci = 0; ci < CITIES.length; ci++) {
-    const { city, state } = CITIES[ci];
+  for (const { city, state, restaurants } of CITIES) {
     const ownerEmail = `owner.${city.toLowerCase().replace(" ", ".")}@restaurantdeals.dev`;
     const restaurantSlug = `${city.toLowerCase().replace(" ", "-")}-owner`;
 
-    let owner = await UserModel.findOne({ email: ownerEmail });
-    if (!owner) {
-      owner = await UserModel.create({
-        email: ownerEmail,
-        passwordHash: await hashPassword(PASSWORD),
-        role: "owner",
-        restaurantId: `${restaurantSlug}-1`,
+    const owner = await UserModel.create({
+      email: ownerEmail,
+      passwordHash: await hashPassword(PASSWORD),
+      role: "owner",
+      restaurantId: `${restaurantSlug}-1`,
+    });
+
+    for (let ri = 0; ri < restaurants.length; ri++) {
+      const sourceRestaurant = restaurants[ri];
+      const restaurantId = `${restaurantSlug}-${ri + 1}`;
+      const address = `${sourceRestaurant.address}, ${city}, ${state}`;
+
+      await RestaurantModel.create({
+        restaurantId,
+        name: sourceRestaurant.name,
+        ownerId: owner._id,
+        source: "seed",
+        description: `${sourceRestaurant.name} is a neighborhood favorite in ${city} known for approachable ${labelCuisine(sourceRestaurant.cuisineType).toLowerCase()} dishes and a polished casual atmosphere.`,
+        address,
+        city,
+        imageUrl: imageForCuisine(sourceRestaurant.cuisineType),
+        phone: `(${201 + ri}) 555-${String(3100 + globalIndex).padStart(4, "0")}`,
+        cuisineType: sourceRestaurant.cuisineType,
+        rating: ratingForIndex(globalIndex) * 2,
       });
-      console.log(`Created owner: ${ownerEmail}`);
-    }
+      totalRestaurants++;
 
-    const names = RESTAURANT_NAMES[ci];
-    const addresses = ADDRESSES[ci];
+      const templates = pickTemplates(globalIndex);
 
-    for (let ri = 0; ri < names.length; ri++) {
-      const restId = `${restaurantSlug}-${ri + 1}`;
-      const name = names[ri];
-      const address = `${addresses[ri]}, ${city}, ${state}`;
-
-      const cuisineType = RESTAURANT_CUISINE[name] ?? "Other";
-      const dietaryTags = RESTAURANT_DIETARY[name] ?? [];
-
-      let restaurant = await RestaurantModel.findOne({ restaurantId: restId });
-      if (!restaurant) {
-        restaurant = await RestaurantModel.create({
-          restaurantId: restId,
-          name,
-          ownerId: owner._id,
-          source: "seed",
-          description: `${name} is a beloved local spot in ${city} known for fresh ingredients and welcoming atmosphere.`,
-          address,
-          city,
-          imageUrl: picsum(name),
-          phone: `(${201 + ci}) 555-${String(1000 + ri * 111).padStart(4, "0")}`,
-          cuisineType,
-        });
-        totalRestaurants++;
-      }
-
-      // 5 deals per restaurant
-      for (let di = 0; di < DEAL_TEMPLATES.length; di++) {
-        const tmpl = DEAL_TEMPLATES[di];
-        const existing = await DealModel.findOne({
-          restaurantId: restId,
-          title: tmpl.title,
-        });
-        if (existing) continue;
-
-        const deal = await DealModel.create({
-          restaurantId: restId,
-          restaurantName: name,
+      for (const template of templates) {
+        await DealModel.create({
+          restaurantId,
+          restaurantName: sourceRestaurant.name,
           restaurantAddress: address,
           restaurantCity: city,
           restaurantSource: "seed",
-          title: tmpl.title,
-          description: tmpl.description,
-          dealType: tmpl.dealType,
-          discountType: tmpl.discountType,
-          value: tmpl.value,
-          price: tmpl.price,
-          imageUrl: picsum(`${name}-${tmpl.title}`),
-          cuisineType,
-          dietaryTags,
-          yelpRating: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
-          status: "SUBMITTED",
+          title: template.title(sourceRestaurant.cuisineType),
+          description: template.description(sourceRestaurant.name, sourceRestaurant.cuisineType),
+          dealType: template.dealType,
+          discountType: template.discountType,
+          value: template.value,
+          price: template.price,
+          imageUrl: imageForCuisine(sourceRestaurant.cuisineType),
+          cuisineType: sourceRestaurant.cuisineType,
+          dietaryTags: sourceRestaurant.dietaryTags ?? [],
+          yelpRating: ratingForIndex(globalIndex),
+          status: "PUBLISHED",
           createdByUserId: owner._id,
           startAt: new Date(),
-          endAt: hoursFromNow(tmpl.expiryHours),
+          endAt: hoursFromNow(template.expiryHours),
         });
-
-        // Auto-approve so deals appear in the public feed.
-        deal.status = "PUBLISHED";
-        await deal.save();
         totalDeals++;
       }
+
+      globalIndex++;
     }
   }
 
-  console.log(`\nSeed complete:`);
+  console.log("\nSeed complete:");
   console.log(`  Restaurants created: ${totalRestaurants}`);
   console.log(`  Deals published:     ${totalDeals}`);
-  console.log(`\nDemo accounts (password: ${PASSWORD}):`);
-  console.log(`  admin@restaurantdeals.dev`);
+  console.log("\nDemo accounts (password: Demo123!):");
+  console.log("  admin@restaurantdeals.dev");
   CITIES.forEach(({ city }) => {
     console.log(`  owner.${city.toLowerCase().replace(" ", ".")}@restaurantdeals.dev`);
   });

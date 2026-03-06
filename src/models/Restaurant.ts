@@ -19,7 +19,7 @@ const restaurantSchema = new Schema(
     imageUrl: { type: String, trim: true },
     cuisineType: {
       type: String,
-      enum: ["French", "Italian", "Spanish", "American", "Asian", "Mexican", "Mediterranean", "Other"],
+      enum: ["African", "French", "Italian", "Spanish", "American", "Asian", "Mexican", "Mediterranean", "Other"],
       trim: true,
     },
   },
