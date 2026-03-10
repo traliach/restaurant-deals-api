@@ -11,7 +11,7 @@
  *  - listOwnerDeals  : all deals the owner created (draft, submitted, published, rejected)
  *  - createOwnerDeal : create a new deal draft
  *  - updateOwnerDeal : edit a draft or rejected deal
- *  - deleteOwnerDeal : delete a draft deal
+ *  - deleteOwnerDeal : delete a draft or rejected deal
  *  - submitOwnerDeal : submit a deal for admin review
  *
  * Status flow: DRAFT → SUBMITTED → PUBLISHED or REJECTED
@@ -280,8 +280,9 @@ export async function deleteOwnerDeal(req: Request, res: Response, next: NextFun
       return res.status(404).json({ ok: false, error: "deal not found" });
     }
 
-    // Only DRAFT deals can be deleted — once submitted or published they are part of the record
-    if (deal.status !== "DRAFT") {
+    // Only DRAFT and REJECTED deals can be deleted.
+    // SUBMITTED/PUBLISHED are retained for review and audit records.
+    if (deal.status !== "DRAFT" && deal.status !== "REJECTED") {
       console.log(`[deleteOwnerDeal] Cannot delete deal with status="${deal.status}"`);
       return res.status(409).json({ ok: false, error: "illegal transition" });
     }
