@@ -57,13 +57,26 @@ export async function listPublicDeals(req: Request, res: Response, next: NextFun
     if (typeof dietaryTags === "string" && dietaryTags.trim())
       filter.dietaryTags = { $all: dietaryTags.split(",").map((t) => t.trim()).filter(Boolean) };
 
-    // Full-text search across title, description, and restaurant name
+    // Simple text search across key deal fields (student-level, minimal logic)
     if (typeof q === "string" && q.trim()) {
-      const search = new RegExp(q.trim(), "i");
-      filter.$and = [
-        expiryFilter,
-        { $or: [{ title: search }, { description: search }, { restaurantName: search }] },
+      const qValue = q.trim();
+      const search = new RegExp(qValue, "i");
+      const searchOr: Record<string, unknown>[] = [
+        { title: search },
+        { description: search },
+        { restaurantName: search },
+        { cuisineType: search },
+        { dealType: search },
+        { tags: search },
       ];
+
+      const asNumber = Number(qValue);
+      if (!Number.isNaN(asNumber)) {
+        searchOr.push({ price: { $lte: asNumber } });
+        searchOr.push({ value: { $gte: asNumber } });
+      }
+
+      filter.$and = [expiryFilter, { $or: searchOr }];
     } else {
       Object.assign(filter, expiryFilter);
     }
