@@ -6,7 +6,7 @@ REST API for a moderated restaurant deals marketplace. Restaurant owners create 
 
 - JWT authentication with role-based access (customer, owner, admin)
 - Deal lifecycle workflow: DRAFT → SUBMITTED → PUBLISHED / REJECTED
-- Public deals feed with search, city filter, source filter, sorting, and pagination
+- Public deals feed with search, city, cuisine, dietary tags, source filter, sorting, and pagination
 - Favorites system with duplicate prevention (compound unique index)
 - Mongoose schemas with validation and query-optimized indexes
 - Restaurant profiles (owner-managed, Yelp-enrichable)
@@ -29,8 +29,10 @@ REST API for a moderated restaurant deals marketplace. Restaurant owners create 
 git clone https://github.com/traliach/restaurant-deals-api
 cd restaurant-deals-api
 npm install
-cp .env.example .env   # fill in your values
+cp .env.example .env   # env links share via slack
 npm run dev
+
+npx ts-node src/scripts/seed.ts
 ```
 
 ## Scripts
@@ -40,7 +42,7 @@ npm run dev
 | `npm run dev`                     | Start dev server (ts-node)           |
 | `npm run build`                   | Compile TypeScript to `dist/`        |
 | `npm start`                       | Run compiled JS from `dist/`         |
-| `npx ts-node src/scripts/seed.ts` | Seed demo data (150 deals)           |
+| `npx ts-node src/scripts/seed.ts` | Seed demo data (~22 deals, 9 restaurants) |
 | `npx ts-node src/scripts/enrich-yelp.ts` | Import real Yelp restaurants  |
 | `npx ts-node src/scripts/reset.ts` | Reset demo data (clear orders/notifications, restore deal expiry) |
 
@@ -73,7 +75,7 @@ Copy `.env.example` to `.env` and fill in your values. Never commit `.env`.
 | GET    | `/api/deals`      | Public | List published deals (search/filter/paginate) |
 | GET    | `/api/deals/:id`  | Public | Single published deal                         |
 
-Query params for `GET /api/deals`: `q`, `dealType`, `city`, `source` (seed/yelp), `minPrice`, `maxPrice`, `minValue`, `maxValue`, `sort` (newest/value), `page`, `limit`.
+Query params for `GET /api/deals`: `q`, `dealType`, `city`, `source` (seed/yelp), `cuisineType`, `dietaryTags`, `minPrice`, `maxPrice`, `minValue`, `maxValue`, `sort` (newest/value), `page`, `limit`.
 
 ### Owner Deals
 | Method | Route                         | Access | Description               |
@@ -176,7 +178,7 @@ src/
     external.ts           Yelp API proxy
     restaurants.ts        Restaurant CRUD
   scripts/
-    seed.ts               Seed 150 demo deals
+    seed.ts               Seed ~22 demo deals, 9 restaurants
     enrich-yelp.ts        Import real Yelp restaurants
     reset.ts              Reset demo environment (clear test data)
 ```
