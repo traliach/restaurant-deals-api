@@ -70,12 +70,6 @@ export async function listPublicDeals(req: Request, res: Response, next: NextFun
         { tags: search },
       ];
 
-      const asNumber = Number(qValue);
-      if (!Number.isNaN(asNumber)) {
-        searchOr.push({ price: { $lte: asNumber } });
-        searchOr.push({ value: { $gte: asNumber } });
-      }
-
       filter.$and = [expiryFilter, { $or: searchOr }];
     } else {
       Object.assign(filter, expiryFilter);
