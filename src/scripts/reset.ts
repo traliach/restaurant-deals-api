@@ -19,6 +19,7 @@ import dotenv from "dotenv";
 import { DealModel } from "../models/Deal";
 import { OrderModel } from "../models/Order";
 import { NotificationModel } from "../models/Notification";
+import { RestaurantModel } from "../models/Restaurant";
 
 dotenv.config();
 
@@ -73,6 +74,27 @@ async function reset() {
     refreshed++;
   }
   console.log(`Seed + Yelp deals refreshed: ${refreshed}`);
+
+  const yelpDealsMissingRating = await DealModel.find(
+    {
+      restaurantSource: "yelp",
+      $or: [{ yelpRating: { $exists: false } }, { yelpRating: null }],
+    },
+    "_id restaurantId"
+  ).lean();
+
+  let ratingsFilled = 0;
+  for (const deal of yelpDealsMissingRating) {
+    const restaurant = await RestaurantModel.findOne({ restaurantId: deal.restaurantId }, "rating").lean();
+    if (typeof restaurant?.rating !== "number") continue;
+
+    await DealModel.updateOne(
+      { _id: deal._id },
+      { $set: { yelpRating: Math.round((restaurant.rating / 2) * 10) / 10 } }
+    );
+    ratingsFilled++;
+  }
+  console.log(`Yelp deal ratings filled: ${ratingsFilled}`);
 
   console.log("\nReset complete. Clean state:");
   console.log("  - All orders cleared");
