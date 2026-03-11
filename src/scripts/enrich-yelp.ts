@@ -197,6 +197,7 @@ async function enrich() {
           price: tmpl.price,
           imageUrl: rest.imageUrl,
           cuisineType: rest.cuisineType,
+          yelpRating: rest.rating ? Math.round((rest.rating / 2) * 10) / 10 : undefined,
           status: "PUBLISHED",
           createdByUserId: adminUser._id,
           startAt: new Date(),
