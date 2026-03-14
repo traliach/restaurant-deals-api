@@ -1,6 +1,19 @@
 # Restaurant Deals API
 
-REST API for a moderated restaurant deals marketplace. Restaurant owners create deals as drafts, submit them for review, and admins approve or reject them before they go public.
+# Restaurant Deals API
+
+Express + TypeScript backend for a full-stack MERN restaurant deals platform.
+
+This API powers a marketplace-style application where restaurant owners create promotions, customers browse published deals, and admins manage review workflows and access control. It is part of my public full-stack portfolio and reflects backend work across API design, authentication, role-based access, CRUD operations, and application workflow management.
+
+## Core Features
+
+- Express + TypeScript backend
+- REST API design for a MERN application
+- Authentication and role-based access control
+- CRUD workflows for deals and related resources
+- Admin, owner, and customer application flows
+- Backend architecture designed to support a React frontend
 
 ## Features
 
