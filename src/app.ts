@@ -1,6 +1,7 @@
 import cors from "cors";
 import crypto from "crypto";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { errorHandler } from "./middleware/errorHandler";
 import authRoutes from "./routes/auth";
 import adminDealsRoutes from "./routes/deals.admin";
@@ -17,6 +18,28 @@ import notificationRoutes from "./routes/notifications";
 import webhookRoutes from "./routes/webhooks";
 
 const app = express();
+
+// Minimal rate limiting for high-risk routes.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const botLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Webhook must use raw body — mount before express.json().
 app.use("/api/webhooks", webhookRoutes);
@@ -41,17 +64,17 @@ app.get("/api/health", (_req, res) => {
 });
 
 // Route groups split by access level.
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/deals", publicDealsRoutes);         // No auth needed
-app.use("/api/owner", ownerDealsRoutes);          // Owner role required
-app.use("/api/admin", adminDealsRoutes);          // Admin role required
+app.use("/api/owner", writeLimiter, ownerDealsRoutes);          // Owner role required
+app.use("/api/admin", writeLimiter, adminDealsRoutes);          // Admin role required
 app.use("/api/favorites", favoritesRoutes);       // Any logged-in user
 app.use("/api/restaurants", restaurantRoutes);    // Public + owner
-app.use("/api/orders", orderRoutes);              // Auth required
+app.use("/api/orders", writeLimiter, orderRoutes);              // Auth required
 app.use("/api/owner", ownerOrderRoutes);          // Owner orders
 app.use("/api/payments", paymentRoutes);          // Stripe payment intent
 app.use("/api/notifications", notificationRoutes); // Auth required
-app.use("/api/bot", botRoutes);                    // Auth required
+app.use("/api/bot", botLimiter, botRoutes);                    // Auth required
 app.use("/api/external", externalRoutes);          // Proxy Yelp search for owners
 app.use(errorHandler);
 
