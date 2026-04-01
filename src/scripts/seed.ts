@@ -108,7 +108,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     discountType: "percent",
     value: 20,
     price: 15.99,
-    expiryHours: 6,
+    expiryHours: 8760,
   },
   {
     slug: "happy-hour",
@@ -119,7 +119,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     discountType: "amount",
     value: 8,
     price: 21.0,
-    expiryHours: 8,
+    expiryHours: 8760,
   },
   {
     slug: "family-bundle",
@@ -130,7 +130,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     discountType: "percent",
     value: 15,
     price: 42.99,
-    expiryHours: 36,
+    expiryHours: 8760,
   },
   {
     slug: "bogo-entree",
@@ -140,7 +140,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     dealType: "Delivery",
     discountType: "bogo",
     price: 19.5,
-    expiryHours: 12,
+    expiryHours: 8760,
   },
   {
     slug: "weekend-brunch",
@@ -151,7 +151,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     discountType: "amount",
     value: 10,
     price: 26.0,
-    expiryHours: 24,
+    expiryHours: 8760,
   },
   {
     slug: "pickup-special",
@@ -162,7 +162,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     discountType: "amount",
     value: 6,
     price: 18.99,
-    expiryHours: 18,
+    expiryHours: 8760,
   },
   {
     slug: "chef-sampler",
@@ -173,7 +173,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     discountType: "percent",
     value: 18,
     price: 29.0,
-    expiryHours: 30,
+    expiryHours: 8760,
   },
   {
     slug: "date-night",
@@ -184,7 +184,7 @@ const DEAL_LIBRARY: DealTemplate[] = [
     discountType: "amount",
     value: 12,
     price: 34.99,
-    expiryHours: 20,
+    expiryHours: 8760,
   },
 ];
 
